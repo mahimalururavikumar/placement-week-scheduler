@@ -9,5 +9,5 @@ public enum ReplanDisruptionType {
 
     COMPANY_DELAY,
 
-    STUDENT_WITHDRAWAL
+    STUDENT_WITHDRAWN
 }

@@ -1,4 +1,4 @@
-package com.mirailabs.scheduler.scheduler;
+package com.mirailabs.scheduler.schedule;
 
 import com.mirailabs.scheduler.entity.CompanySlot;
 import com.mirailabs.scheduler.entity.Interview;

@@ -1,4 +1,4 @@
-package com.mirailabs.scheduler.scheduler;
+package com.mirailabs.scheduler.schedule;
 
 import com.mirailabs.scheduler.entity.*;
 import com.mirailabs.scheduler.repository.CompanySlotRepository;
@@ -9,7 +9,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -34,7 +33,7 @@ public class SchedulingEngine {
             new HashMap<>();
 
     @Transactional
-    public void generateInitialSchedule() {
+    public ScheduleGenerationResult generateInitialSchedule() {
 
         System.out.println("========================================");
         System.out.println("GLOBAL INITIAL SCHEDULER STARTED");
@@ -196,6 +195,14 @@ public class SchedulingEngine {
         System.out.println("Scheduled   : " + scheduled);
         System.out.println("Unscheduled : " + unscheduled);
         System.out.println("========================================");
+
+        return new ScheduleGenerationResult(
+                true,
+                interviews.size(),
+                scheduled,
+                unscheduled,
+                "Initial schedule generated successfully."
+        );
     }
 
     private SchedulingCandidate findBestCandidate(
