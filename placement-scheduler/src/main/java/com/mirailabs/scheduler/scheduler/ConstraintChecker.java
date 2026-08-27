@@ -66,8 +66,10 @@ public class ConstraintChecker {
         return scheduledInterviews.stream()
                 .filter(existing ->
                         existing.getPanel() != null
-                                && existing.getPanel().getId()
-                                .equals(panel.getId()))
+                                && existing.getPanel()
+                                .getId()
+                                .equals(panel.getId())
+                )
                 .anyMatch(existing ->
                         overlaps(
                                 existing.getDate(),
@@ -76,7 +78,8 @@ public class ConstraintChecker {
                                 date,
                                 startTime,
                                 endTime
-                        ));
+                        )
+                );
     }
 
     public boolean isWithinCompanySlot(

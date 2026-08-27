@@ -1,14 +1,7 @@
 package com.mirailabs.scheduler.replan;
 
-import com.mirailabs.scheduler.entity.CompanySlot;
-import com.mirailabs.scheduler.entity.Interview;
-import com.mirailabs.scheduler.entity.InterviewStatus;
-import com.mirailabs.scheduler.entity.Panel;
-import com.mirailabs.scheduler.entity.Room;
-import com.mirailabs.scheduler.repository.CompanySlotRepository;
-import com.mirailabs.scheduler.repository.InterviewRepository;
-import com.mirailabs.scheduler.repository.PanelRepository;
-import com.mirailabs.scheduler.repository.RoomRepository;
+import com.mirailabs.scheduler.entity.*;
+import com.mirailabs.scheduler.repository.*;
 import com.mirailabs.scheduler.scheduler.ConstraintChecker;
 import com.mirailabs.scheduler.scheduler.SchedulingCandidate;
 import lombok.RequiredArgsConstructor;
@@ -17,6 +10,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -32,6 +26,8 @@ public class ReplanService {
     private final RoomRepository roomRepository;
     private final PanelRepository panelRepository;
     private final CompanySlotRepository companySlotRepository;
+    private final ReplanAuditRepository replanAuditRepository;
+    private final CompanyRepository companyRepository;
 
     private final ConstraintChecker constraintChecker =
             new ConstraintChecker();
@@ -113,6 +109,9 @@ public class ReplanService {
         List<ReplanChange> changes =
                 new ArrayList<>();
 
+        List<ReplanAudit> audits =
+                new ArrayList<>();
+
         int moved = 0;
         int unscheduled = 0;
 
@@ -179,6 +178,35 @@ public class ReplanService {
                         )
                 );
 
+                audits.add(
+                        ReplanAudit.builder()
+                                .interviewId(interview.getId())
+                                .disruptionType(
+                                        ReplanDisruptionType.ROOM_UNAVAILABLE
+                                )
+                                .replannedAt(LocalDateTime.now())
+
+                                .oldDate(old.date())
+                                .oldStartTime(old.startTime())
+                                .oldEndTime(old.endTime())
+                                .oldRoomId(old.roomId())
+                                .oldPanelId(old.panelId())
+
+                                .newDate(null)
+                                .newStartTime(null)
+                                .newEndTime(null)
+                                .newRoomId(null)
+                                .newPanelId(null)
+
+                                .moved(false)
+                                .cancelled(true)
+
+                                .reason(
+                                        "ROOM_UNAVAILABLE: no feasible replacement slot"
+                                )
+                                .build()
+                );
+
             } else {
 
                 applyCandidate(
@@ -198,10 +226,39 @@ public class ReplanService {
                                 "ROOM_UNAVAILABLE"
                         )
                 );
+
+                audits.add(
+                        ReplanAudit.builder()
+                                .interviewId(interview.getId())
+                                .disruptionType(
+                                        ReplanDisruptionType.ROOM_UNAVAILABLE
+                                )
+                                .replannedAt(LocalDateTime.now())
+
+                                .oldDate(old.date())
+                                .oldStartTime(old.startTime())
+                                .oldEndTime(old.endTime())
+                                .oldRoomId(old.roomId())
+                                .oldPanelId(old.panelId())
+
+                                .newDate(candidate.date())
+                                .newStartTime(candidate.startTime())
+                                .newEndTime(candidate.endTime())
+                                .newRoomId(candidate.room().getId())
+                                .newPanelId(candidate.panel().getId())
+
+                                .moved(true)
+                                .cancelled(false)
+
+                                .reason("ROOM_UNAVAILABLE")
+                                .build()
+                );
             }
         }
 
         interviewRepository.saveAll(affected);
+
+        replanAuditRepository.saveAll(audits);
 
         return new ReplanResult(
                 unavailableRoom.getId(),
@@ -444,6 +501,1324 @@ public class ReplanService {
         );
     }
 
+    @Transactional
+    public PanelDropoutResult replanPanelDropout(
+            PanelDropoutRequest request) {
+
+        Panel droppedPanel =
+                panelRepository.findById(request.panelId())
+                        .orElseThrow(() ->
+                                new IllegalArgumentException(
+                                        "Panel not found: "
+                                                + request.panelId()
+                                )
+                        );
+
+        List<Interview> scheduled =
+                interviewRepository.findByStatus(
+                        InterviewStatus.SCHEDULED
+                );
+
+        /*
+         * Only interviews using the dropped panel
+         * on the affected date are impacted.
+         */
+        List<Interview> affected =
+                scheduled.stream()
+                        .filter(interview ->
+                                interview.getPanel() != null)
+                        .filter(interview ->
+                                interview.getPanel()
+                                        .getId()
+                                        .equals(
+                                                request.panelId()
+                                        ))
+                        .filter(interview ->
+                                interview.getDate()
+                                        .equals(request.date()))
+                        .toList();
+
+        if (affected.isEmpty()) {
+
+            return new PanelDropoutResult(
+                    droppedPanel.getId(),
+                    droppedPanel.getPanelCode(),
+                    0,
+                    0,
+                    0,
+                    0,
+                    List.of()
+            );
+        }
+
+        /*
+         * Freeze every unaffected appointment.
+         */
+        List<Interview> frozen =
+                scheduled.stream()
+                        .filter(interview ->
+                                !affected.contains(interview))
+                        .collect(
+                                java.util.stream.Collectors.toCollection(
+                                        ArrayList::new
+                                )
+                        );
+
+        /*
+         * Working schedule contains:
+         *
+         * 1. All unaffected interviews
+         * 2. Successfully replanned affected interviews
+         */
+        List<Interview> workingSchedule =
+                new ArrayList<>(frozen);
+
+        List<ReplanChange> changes =
+                new ArrayList<>();
+
+        List<ReplanAudit> audits =
+                new ArrayList<>();
+
+        int moved = 0;
+        int unscheduled = 0;
+
+        /*
+         * Deterministic processing:
+         * earliest affected appointment first.
+         */
+        List<Interview> orderedAffected =
+                affected.stream()
+                        .sorted(
+                                Comparator
+                                        .comparing(
+                                                Interview::getDate
+                                        )
+                                        .thenComparing(
+                                                Interview::getStartTime
+                                        )
+                                        .thenComparing(
+                                                Interview::getId
+                                        )
+                        )
+                        .toList();
+
+        for (Interview interview : orderedAffected) {
+
+            ReplanSnapshot old =
+                    ReplanSnapshot.from(interview);
+
+            /*
+             * Find replacement assignment.
+             *
+             * The dropped panel is explicitly excluded.
+             */
+            SchedulingCandidate candidate =
+                    findLeastDisruptivePanelCandidate(
+                            interview,
+                            request,
+                            workingSchedule
+                    );
+
+            if (candidate == null) {
+
+                /*
+                 * No feasible replacement exists.
+                 */
+                interview.setRoom(null);
+                interview.setPanel(null);
+                interview.setDate(null);
+                interview.setStartTime(null);
+                interview.setEndTime(null);
+
+                interview.setStatus(
+                        InterviewStatus.UNSCHEDULED
+                );
+
+                interview.setUnscheduledReason(
+                        "PANEL_DROPOUT: no feasible replacement slot"
+                );
+
+                unscheduled++;
+
+                changes.add(
+                        buildChange(
+                                interview,
+                                old,
+                                null,
+                                "PANEL_DROPOUT"
+                        )
+                );
+
+                audits.add(
+                        ReplanAudit.builder()
+                                .interviewId(interview.getId())
+                                .disruptionType(
+                                        ReplanDisruptionType.PANEL_DROPOUT
+                                )
+                                .replannedAt(
+                                        java.time.LocalDateTime.now()
+                                )
+
+                                .oldDate(old.date())
+                                .oldStartTime(old.startTime())
+                                .oldEndTime(old.endTime())
+                                .oldRoomId(old.roomId())
+                                .oldPanelId(old.panelId())
+
+                                .newDate(null)
+                                .newStartTime(null)
+                                .newEndTime(null)
+                                .newRoomId(null)
+                                .newPanelId(null)
+
+                                .moved(false)
+                                .cancelled(true)
+
+                                .reason(
+                                        "PANEL_DROPOUT: no feasible replacement slot"
+                                )
+                                .build()
+                );
+
+            } else {
+
+                applyCandidate(
+                        interview,
+                        candidate
+                );
+
+                workingSchedule.add(interview);
+
+                moved++;
+
+                changes.add(
+                        buildChange(
+                                interview,
+                                old,
+                                candidate,
+                                "PANEL_DROPOUT"
+                        )
+                );
+
+                audits.add(
+                        ReplanAudit.builder()
+                                .interviewId(interview.getId())
+                                .disruptionType(
+                                        ReplanDisruptionType.PANEL_DROPOUT
+                                )
+                                .replannedAt(
+                                        java.time.LocalDateTime.now()
+                                )
+
+                                .oldDate(old.date())
+                                .oldStartTime(old.startTime())
+                                .oldEndTime(old.endTime())
+                                .oldRoomId(old.roomId())
+                                .oldPanelId(old.panelId())
+
+                                .newDate(candidate.date())
+                                .newStartTime(candidate.startTime())
+                                .newEndTime(candidate.endTime())
+                                .newRoomId(
+                                        candidate.room().getId()
+                                )
+                                .newPanelId(
+                                        candidate.panel().getId()
+                                )
+
+                                .moved(true)
+                                .cancelled(false)
+
+                                .reason("PANEL_DROPOUT")
+                                .build()
+                );
+            }
+        }
+
+        interviewRepository.saveAll(affected);
+
+        replanAuditRepository.saveAll(audits);
+
+        return new PanelDropoutResult(
+                droppedPanel.getId(),
+                droppedPanel.getPanelCode(),
+                affected.size(),
+                moved,
+                unscheduled,
+                0,
+                changes
+        );
+    }
+
+    private SchedulingCandidate findLeastDisruptivePanelCandidate(
+            Interview interview,
+            PanelDropoutRequest request,
+            List<Interview> workingSchedule) {
+
+        List<CompanySlot> companySlots =
+                companySlotRepository
+                        .findByCompanyIdAndActiveTrue(
+                                interview.getCompany().getId()
+                        );
+
+        List<Panel> panels =
+                panelRepository
+                        .findByCompanyIdAndActiveTrue(
+                                interview.getCompany().getId()
+                        )
+                        .stream()
+                        .filter(panel ->
+                                !panel.getId()
+                                        .equals(request.panelId()))
+                        .toList();
+
+        List<Room> rooms =
+                roomRepository.findByActiveTrue();
+
+        List<SchedulingCandidate> candidates =
+                new ArrayList<>();
+
+        int duration =
+                interview.getCompany()
+                        .getInterviewDurationMinutes();
+
+        for (CompanySlot slot : companySlots) {
+
+            LocalTime start =
+                    slot.getStartTime();
+
+            while (!start.plusMinutes(duration)
+                    .isAfter(slot.getEndTime())) {
+
+                LocalTime end =
+                        start.plusMinutes(duration);
+
+                /*
+                 * Student cannot be double-booked.
+                 */
+                if (constraintChecker.hasStudentConflict(
+                        interview,
+                        slot.getDate(),
+                        start,
+                        end,
+                        workingSchedule)) {
+
+                    start = start.plusMinutes(
+                            SLOT_GRANULARITY_MINUTES
+                    );
+
+                    continue;
+                }
+
+                for (Panel panel : panels) {
+
+                    if (constraintChecker.hasPanelConflict(
+                            panel,
+                            slot.getDate(),
+                            start,
+                            end,
+                            workingSchedule)) {
+
+                        continue;
+                    }
+
+                    for (Room room : rooms) {
+
+                        if (constraintChecker.hasRoomConflict(
+                                room,
+                                slot.getDate(),
+                                start,
+                                end,
+                                workingSchedule)) {
+
+                            continue;
+                        }
+
+                        candidates.add(
+                                new SchedulingCandidate(
+                                        slot.getDate(),
+                                        start,
+                                        end,
+                                        room,
+                                        panel
+                                )
+                        );
+                    }
+                }
+
+                start = start.plusMinutes(
+                        SLOT_GRANULARITY_MINUTES
+                );
+            }
+        }
+
+        /*
+         * Choose the least disruptive replacement.
+         */
+        return candidates.stream()
+                .min(
+                        Comparator
+                                .<SchedulingCandidate>comparingInt(
+                                        candidate ->
+                                                disruptionCost(
+                                                        interview,
+                                                        candidate
+                                                )
+                                )
+                                .thenComparing(
+                                        SchedulingCandidate::date
+                                )
+                                .thenComparing(
+                                        SchedulingCandidate::startTime
+                                )
+                )
+                .orElse(null);
+    }
+
+    @Transactional
+    public CompanyDelayResult replanCompanyDelay(
+            CompanyDelayRequest request) {
+
+        Company company =
+                companyRepository.findById(request.companyId())
+                        .orElseThrow(() ->
+                                new IllegalArgumentException(
+                                        "Company not found: "
+                                                + request.companyId()
+                                )
+                        );
+
+        /*
+         * Find the company's active slot for the affected date.
+         */
+        CompanySlot slot =
+                companySlotRepository.findAll()
+                        .stream()
+                        .filter(companySlot ->
+                                Boolean.TRUE.equals(
+                                        companySlot.getActive()))
+                        .filter(companySlot ->
+                                companySlot.getCompany()
+                                        .getId()
+                                        .equals(company.getId()))
+                        .filter(companySlot ->
+                                companySlot.getDate()
+                                        .equals(request.date()))
+                        .findFirst()
+                        .orElseThrow(() ->
+                                new IllegalArgumentException(
+                                        "No active company slot found for "
+                                                + company.getId()
+                                                + " on "
+                                                + request.date()
+                                )
+                        );
+
+        LocalTime oldStartTime =
+                slot.getStartTime();
+
+        LocalTime oldEndTime =
+                slot.getEndTime();
+
+        /*
+         * Delay must move the start forward.
+         */
+        if (!request.newStartTime()
+                .isAfter(oldStartTime)) {
+
+            throw new IllegalArgumentException(
+                    "New company start time must be after "
+                            + oldStartTime
+            );
+        }
+
+        if (!request.newStartTime()
+                .isBefore(oldEndTime)) {
+
+            throw new IllegalArgumentException(
+                    "New company start time must be before "
+                            + oldEndTime
+            );
+        }
+
+        /*
+         * Interviews that start before the new company
+         * arrival time are affected.
+         */
+        List<Interview> affected =
+                interviewRepository.findByStatus(
+                                InterviewStatus.SCHEDULED
+                        )
+                        .stream()
+                        .filter(interview ->
+                                interview.getCompany()
+                                        .getId()
+                                        .equals(company.getId()))
+                        .filter(interview ->
+                                request.date()
+                                        .equals(interview.getDate()))
+                        .filter(interview ->
+                                interview.getStartTime()
+                                        .isBefore(
+                                                request.newStartTime()
+                                        ))
+                        .toList();
+
+        /*
+         * Update company availability.
+         */
+        slot.setStartTime(
+                request.newStartTime()
+        );
+
+        companySlotRepository.save(slot);
+
+        if (affected.isEmpty()) {
+
+            return new CompanyDelayResult(
+                    company.getId(),
+                    company.getCompanyCode(),
+                    company.getName(),
+                    oldStartTime,
+                    request.newStartTime(),
+                    oldEndTime,
+                    0,
+                    0,
+                    0,
+                    0,
+                    List.of()
+            );
+        }
+
+        /*
+         * Freeze unaffected interviews.
+         */
+        List<Interview> workingSchedule =
+                interviewRepository
+                        .findByStatus(
+                                InterviewStatus.SCHEDULED
+                        )
+                        .stream()
+                        .filter(interview ->
+                                !affected.contains(interview))
+                        .collect(
+                                java.util.stream.Collectors
+                                        .toCollection(
+                                                ArrayList::new
+                                        )
+                        );
+
+        List<ReplanChange> changes =
+                new ArrayList<>();
+
+        List<ReplanAudit> audits =
+                new ArrayList<>();
+
+        /*
+         * Interviews whose database state changed.
+         *
+         * Initially this contains the affected interviews.
+         * A displacement may add another interview.
+         */
+        List<Interview> changedInterviews =
+                new ArrayList<>(affected);
+
+        int moved = 0;
+        int unscheduled = 0;
+
+        /*
+         * Process affected interviews deterministically.
+         */
+        List<Interview> orderedAffected =
+                affected.stream()
+                        .sorted(
+                                Comparator
+                                        .comparing(
+                                                Interview::getDate
+                                        )
+                                        .thenComparing(
+                                                Interview::getStartTime
+                                        )
+                                        .thenComparing(
+                                                Interview::getId
+                                        )
+                        )
+                        .toList();
+
+        for (Interview interview : orderedAffected) {
+
+            ReplanSnapshot old =
+                    ReplanSnapshot.from(interview);
+
+            /*
+             * First try a completely free slot.
+             */
+            SchedulingCandidate candidate =
+                    findLeastDisruptiveCompanyDelayCandidate(
+                            interview,
+                            workingSchedule
+                    );
+
+            /*
+             * If no free slot exists, try one-level displacement.
+             */
+            DisplacementPlan displacementPlan = null;
+
+            if (candidate == null) {
+
+                displacementPlan =
+                        findCompanyDelayDisplacementPlan(
+                                interview,
+                                workingSchedule
+                        );
+            }
+
+            /*
+             * --------------------------------------------------
+             * CASE 1: No direct slot and no displacement plan
+             * --------------------------------------------------
+             */
+            if (candidate == null
+                    && displacementPlan == null) {
+
+                interview.setDate(null);
+                interview.setStartTime(null);
+                interview.setEndTime(null);
+                interview.setRoom(null);
+                interview.setPanel(null);
+
+                interview.setStatus(
+                        InterviewStatus.UNSCHEDULED
+                );
+
+                interview.setUnscheduledReason(
+                        "COMPANY_DELAY: no feasible replacement slot"
+                );
+
+                unscheduled++;
+
+                changes.add(
+                        buildChange(
+                                interview,
+                                old,
+                                null,
+                                "COMPANY_DELAY"
+                        )
+                );
+
+                audits.add(
+                        ReplanAudit.builder()
+                                .interviewId(
+                                        interview.getId()
+                                )
+                                .disruptionType(
+                                        ReplanDisruptionType.COMPANY_DELAY
+                                )
+                                .replannedAt(
+                                        LocalDateTime.now()
+                                )
+                                .oldDate(old.date())
+                                .oldStartTime(old.startTime())
+                                .oldEndTime(old.endTime())
+                                .oldRoomId(old.roomId())
+                                .oldPanelId(old.panelId())
+                                .newDate(null)
+                                .newStartTime(null)
+                                .newEndTime(null)
+                                .newRoomId(null)
+                                .newPanelId(null)
+                                .moved(false)
+                                .cancelled(true)
+                                .reason(
+                                        "COMPANY_DELAY: no feasible replacement slot"
+                                )
+                                .build()
+                );
+
+                continue;
+            }
+
+            /*
+             * --------------------------------------------------
+             * CASE 2: Direct free slot found
+             * --------------------------------------------------
+             */
+            if (candidate != null) {
+
+                applyCandidate(
+                        interview,
+                        candidate
+                );
+
+                workingSchedule.add(
+                        interview
+                );
+
+                moved++;
+
+                changes.add(
+                        buildChange(
+                                interview,
+                                old,
+                                candidate,
+                                "COMPANY_DELAY"
+                        )
+                );
+
+                audits.add(
+                        ReplanAudit.builder()
+                                .interviewId(
+                                        interview.getId()
+                                )
+                                .disruptionType(
+                                        ReplanDisruptionType.COMPANY_DELAY
+                                )
+                                .replannedAt(
+                                        LocalDateTime.now()
+                                )
+                                .oldDate(old.date())
+                                .oldStartTime(old.startTime())
+                                .oldEndTime(old.endTime())
+                                .oldRoomId(old.roomId())
+                                .oldPanelId(old.panelId())
+                                .newDate(candidate.date())
+                                .newStartTime(candidate.startTime())
+                                .newEndTime(candidate.endTime())
+                                .newRoomId(
+                                        candidate.room().getId()
+                                )
+                                .newPanelId(
+                                        candidate.panel().getId()
+                                )
+                                .moved(true)
+                                .cancelled(false)
+                                .reason(
+                                        "COMPANY_DELAY"
+                                )
+                                .build()
+                );
+
+                continue;
+            }
+
+            /*
+             * --------------------------------------------------
+             * CASE 3: One-level displacement
+             * --------------------------------------------------
+             */
+            Interview displaced =
+                    displacementPlan.displacedInterview();
+
+            SchedulingCandidate targetCandidate =
+                    displacementPlan.candidate();
+
+            SchedulingCandidate displacedReplacement =
+                    displacementPlan.displacedReplacement();
+
+            ReplanSnapshot displacedOld =
+                    ReplanSnapshot.from(displaced);
+
+            /*
+             * Move the displaced interview first.
+             */
+            applyCandidate(
+                    displaced,
+                    displacedReplacement
+            );
+
+            /*
+             * Update working schedule:
+             *
+             * displaced interview leaves its old slot
+             * and occupies its replacement slot.
+             */
+            workingSchedule.remove(
+                    displaced
+            );
+
+            workingSchedule.add(
+                    displaced
+            );
+
+            /*
+             * Now place the delayed interview
+             * into the freed slot.
+             */
+            applyCandidate(
+                    interview,
+                    targetCandidate
+            );
+
+            workingSchedule.add(
+                    interview
+            );
+
+            /*
+             * Both interviews changed.
+             */
+            moved += 2;
+
+            /*
+             * Make sure the displaced interview
+             * is persisted too.
+             */
+            if (!changedInterviews.contains(displaced)) {
+
+                changedInterviews.add(
+                        displaced
+                );
+            }
+
+            /*
+             * Audit displaced interview.
+             */
+            changes.add(
+                    buildChange(
+                            displaced,
+                            displacedOld,
+                            displacedReplacement,
+                            "COMPANY_DELAY: DISPLACED"
+                    )
+            );
+
+            audits.add(
+                    ReplanAudit.builder()
+                            .interviewId(
+                                    displaced.getId()
+                            )
+                            .disruptionType(
+                                    ReplanDisruptionType.COMPANY_DELAY
+                            )
+                            .replannedAt(
+                                    LocalDateTime.now()
+                            )
+                            .oldDate(
+                                    displacedOld.date()
+                            )
+                            .oldStartTime(
+                                    displacedOld.startTime()
+                            )
+                            .oldEndTime(
+                                    displacedOld.endTime()
+                            )
+                            .oldRoomId(
+                                    displacedOld.roomId()
+                            )
+                            .oldPanelId(
+                                    displacedOld.panelId()
+                            )
+                            .newDate(
+                                    displacedReplacement.date()
+                            )
+                            .newStartTime(
+                                    displacedReplacement.startTime()
+                            )
+                            .newEndTime(
+                                    displacedReplacement.endTime()
+                            )
+                            .newRoomId(
+                                    displacedReplacement.room().getId()
+                            )
+                            .newPanelId(
+                                    displacedReplacement.panel().getId()
+                            )
+                            .moved(true)
+                            .cancelled(false)
+                            .reason(
+                                    "COMPANY_DELAY: DISPLACED"
+                            )
+                            .build()
+            );
+
+            /*
+             * Audit original delayed interview.
+             */
+            changes.add(
+                    buildChange(
+                            interview,
+                            old,
+                            targetCandidate,
+                            "COMPANY_DELAY"
+                    )
+            );
+
+            audits.add(
+                    ReplanAudit.builder()
+                            .interviewId(
+                                    interview.getId()
+                            )
+                            .disruptionType(
+                                    ReplanDisruptionType.COMPANY_DELAY
+                            )
+                            .replannedAt(
+                                    LocalDateTime.now()
+                            )
+                            .oldDate(old.date())
+                            .oldStartTime(old.startTime())
+                            .oldEndTime(old.endTime())
+                            .oldRoomId(old.roomId())
+                            .oldPanelId(old.panelId())
+                            .newDate(
+                                    targetCandidate.date()
+                            )
+                            .newStartTime(
+                                    targetCandidate.startTime()
+                            )
+                            .newEndTime(
+                                    targetCandidate.endTime()
+                            )
+                            .newRoomId(
+                                    targetCandidate.room().getId()
+                            )
+                            .newPanelId(
+                                    targetCandidate.panel().getId()
+                            )
+                            .moved(true)
+                            .cancelled(false)
+                            .reason(
+                                    "COMPANY_DELAY"
+                            )
+                            .build()
+            );
+        }
+
+        /*
+         * Save every interview whose schedule changed.
+         */
+        interviewRepository.saveAll(
+                changedInterviews
+        );
+
+        replanAuditRepository.saveAll(
+                audits
+        );
+
+        return new CompanyDelayResult(
+                company.getId(),
+                company.getCompanyCode(),
+                company.getName(),
+                oldStartTime,
+                request.newStartTime(),
+                oldEndTime,
+                affected.size(),
+                moved,
+                unscheduled,
+                0,
+                changes
+        );
+    }
+
+    private DisplacementPlan findCompanyDelayDisplacementPlan(
+            Interview interview,
+            List<Interview> workingSchedule) {
+
+        List<CompanySlot> activeSlots =
+                companySlotRepository.findAll()
+                        .stream()
+                        .filter(slot ->
+                                Boolean.TRUE.equals(
+                                        slot.getActive()))
+                        .filter(slot ->
+                                slot.getCompany()
+                                        .getId()
+                                        .equals(
+                                                interview
+                                                        .getCompany()
+                                                        .getId()
+                                        ))
+                        .toList();
+
+        List<Panel> panels =
+                panelRepository
+                        .findByCompanyIdAndActiveTrue(
+                                interview
+                                        .getCompany()
+                                        .getId()
+                        );
+
+        List<Room> rooms =
+                roomRepository.findByActiveTrue();
+
+        int duration =
+                interview.getCompany()
+                        .getInterviewDurationMinutes();
+
+        for (CompanySlot slot : activeSlots) {
+
+            LocalTime current =
+                    slot.getStartTime();
+
+            while (!current.plusMinutes(duration)
+                    .isAfter(slot.getEndTime())) {
+
+                LocalTime end =
+                        current.plusMinutes(duration);
+
+                /*
+                 * The affected student's availability
+                 * is still a hard constraint.
+                 */
+                if (constraintChecker.hasStudentConflict(
+                        interview,
+                        slot.getDate(),
+                        current,
+                        end,
+                        workingSchedule)) {
+
+                    current = current.plusMinutes(
+                            SLOT_GRANULARITY_MINUTES
+                    );
+
+                    continue;
+                }
+
+                for (Panel panel : panels) {
+
+                    final LocalDate candidateDate = slot.getDate();
+                    final LocalTime candidateStart = current;
+                    final LocalTime candidateEnd = end;
+
+                    List<Interview> panelConflicts =
+                            workingSchedule.stream()
+                                    .filter(existing ->
+                                            existing.getPanel() != null)
+                                    .filter(existing ->
+                                            existing.getPanel()
+                                                    .getId()
+                                                    .equals(panel.getId()))
+                                    .filter(existing ->
+                                            overlaps(
+                                                    existing,
+                                                    candidateDate,
+                                                    candidateStart,
+                                                    candidateEnd))
+                                    .toList();
+
+                    /*
+                     * More than one panel conflict would require
+                     * more than one displacement.
+                     */
+                    if (panelConflicts.size() > 1) {
+                        continue;
+                    }
+
+                    for (Room room : rooms) {
+
+                        List<Interview> roomConflicts =
+                                workingSchedule.stream()
+                                        .filter(existing ->
+                                                existing.getRoom() != null)
+                                        .filter(existing ->
+                                                existing.getRoom()
+                                                        .getId()
+                                                        .equals(room.getId()))
+                                        .filter(existing ->
+                                                overlaps(
+                                                        existing,
+                                                        candidateDate,
+                                                        candidateStart,
+                                                        candidateEnd))
+                                        .toList();
+
+                        /*
+                         * More than one room conflict would require
+                         * multiple displacements.
+                         */
+                        if (roomConflicts.size() > 1) {
+                            continue;
+                        }
+
+                        /*
+                         * Collect the appointments occupying
+                         * the target panel/room.
+                         */
+                        java.util.Set<Interview> conflicts =
+                                new java.util.LinkedHashSet<>();
+
+                        conflicts.addAll(
+                                panelConflicts
+                        );
+
+                        conflicts.addAll(
+                                roomConflicts
+                        );
+
+                        /*
+                         * A direct free candidate should already
+                         * have been handled by the normal finder.
+                         */
+                        if (conflicts.isEmpty()) {
+                            continue;
+                        }
+
+                        /*
+                         * We support exactly one displaced
+                         * appointment.
+                         */
+                        if (conflicts.size() != 1) {
+                            continue;
+                        }
+
+                        Interview displaced =
+                                conflicts.iterator().next();
+
+                        SchedulingCandidate targetCandidate =
+                                new SchedulingCandidate(
+                                        slot.getDate(),
+                                        current,
+                                        end,
+                                        room,
+                                        panel
+                                );
+
+                        /*
+                         * Remove the displaced appointment
+                         * temporarily.
+                         */
+                        List<Interview> replacementSchedule =
+                                new ArrayList<>(
+                                        workingSchedule
+                                );
+
+                        replacementSchedule.remove(
+                                displaced
+                        );
+
+                        /*
+                         * Reserve the target slot for the
+                         * delayed interview.
+                         */
+                        replacementSchedule.add(
+                                interview
+                        );
+
+                        /*
+                         * Find somewhere else for the
+                         * displaced appointment.
+                         */
+                        SchedulingCandidate replacement =
+                                findLeastDisruptiveCompanyDelayCandidate(
+                                        displaced,
+                                        replacementSchedule
+                                );
+
+                        if (replacement != null) {
+
+                            return new DisplacementPlan(
+                                    targetCandidate,
+                                    displaced,
+                                    replacement
+                            );
+                        }
+                    }
+                }
+
+                current = current.plusMinutes(
+                        SLOT_GRANULARITY_MINUTES
+                );
+            }
+        }
+
+        return null;
+    }
+
+    private boolean overlaps(
+            Interview interview,
+            LocalDate date,
+            LocalTime startTime,
+            LocalTime endTime) {
+
+        if (interview.getDate() == null
+                || interview.getStartTime() == null
+                || interview.getEndTime() == null) {
+
+            return false;
+        }
+
+        if (!interview.getDate().equals(date)) {
+            return false;
+        }
+
+        return interview.getStartTime().isBefore(endTime)
+                && interview.getEndTime().isAfter(startTime);
+    }
+
+    private SchedulingCandidate findLeastDisruptiveCompanyDelayCandidate(
+            Interview interview,
+            List<Interview> workingSchedule) {
+
+        int totalTimeSlots = 0;
+        int studentConflictCount = 0;
+        int panelConflictCount = 0;
+        int roomConflictCount = 0;
+        int feasibleCount = 0;
+
+        List<CompanySlot> activeSlots =
+                companySlotRepository.findAll()
+                        .stream()
+                        .filter(slot ->
+                                Boolean.TRUE.equals(
+                                        slot.getActive()))
+                        .filter(slot ->
+                                slot.getCompany()
+                                        .getId()
+                                        .equals(
+                                                interview
+                                                        .getCompany()
+                                                        .getId()
+                                        ))
+                        .toList();
+
+        List<Panel> panels =
+                panelRepository
+                        .findByCompanyIdAndActiveTrue(
+                                interview
+                                        .getCompany()
+                                        .getId()
+                        );
+
+        List<Room> rooms =
+                roomRepository.findByActiveTrue();
+
+        List<SchedulingCandidate> candidates =
+                new ArrayList<>();
+
+        int duration =
+                interview.getCompany()
+                        .getInterviewDurationMinutes();
+
+        for (CompanySlot slot : activeSlots) {
+
+            LocalTime current = slot.getStartTime();
+
+            while (!current.plusMinutes(duration)
+                    .isAfter(slot.getEndTime())) {
+
+                totalTimeSlots++;
+
+                LocalTime end =
+                        current.plusMinutes(duration);
+
+                /*
+                 * Student conflict
+                 */
+                if (constraintChecker.hasStudentConflict(
+                        interview,
+                        slot.getDate(),
+                        current,
+                        end,
+                        workingSchedule)) {
+
+                    studentConflictCount++;
+
+                    current = current.plusMinutes(
+                            SLOT_GRANULARITY_MINUTES
+                    );
+
+                    continue;
+                }
+
+                for (Panel panel : panels) {
+
+                    if (constraintChecker.hasPanelConflict(
+                            panel,
+                            slot.getDate(),
+                            current,
+                            end,
+                            workingSchedule)) {
+
+                        panelConflictCount++;
+                        continue;
+                    }
+
+                    for (Room room : rooms) {
+
+                        if (constraintChecker.hasRoomConflict(
+                                room,
+                                slot.getDate(),
+                                current,
+                                end,
+                                workingSchedule)) {
+
+                            roomConflictCount++;
+                            continue;
+                        }
+
+                        feasibleCount++;
+
+                        candidates.add(
+                                new SchedulingCandidate(
+                                        slot.getDate(),
+                                        current,
+                                        end,
+                                        room,
+                                        panel
+                                )
+                        );
+                    }
+                }
+
+                current = current.plusMinutes(
+                        SLOT_GRANULARITY_MINUTES
+                );
+            }
+        }
+
+        System.out.println(
+                "COMPANY_DELAY candidate count for interview "
+                        + interview.getId()
+                        + " = "
+                        + candidates.size()
+        );
+
+        System.out.println(
+                "COMPANY_DELAY DEBUG | interview="
+                        + interview.getId()
+                        + " | slots="
+                        + activeSlots.size()
+                        + " | panels="
+                        + panels.size()
+                        + " | rooms="
+                        + rooms.size()
+                        + " | timeSlots="
+                        + totalTimeSlots
+                        + " | studentConflicts="
+                        + studentConflictCount
+                        + " | panelConflicts="
+                        + panelConflictCount
+                        + " | roomConflicts="
+                        + roomConflictCount
+                        + " | feasible="
+                        + feasibleCount
+        );
+
+        return candidates.stream()
+                .min(
+                        Comparator
+                                .<SchedulingCandidate>comparingInt(
+                                        candidate ->
+                                                disruptionCost(
+                                                        interview,
+                                                        candidate
+                                                )
+                                )
+                                .thenComparing(
+                                        SchedulingCandidate::date
+                                )
+                                .thenComparing(
+                                        SchedulingCandidate::startTime
+                                )
+                )
+                .orElse(null);
+    }
+
+    private record DisplacementPlan(
+            SchedulingCandidate candidate,
+            Interview displacedInterview,
+            SchedulingCandidate displacedReplacement
+    ) {
+    }
+
     private record ReplanSnapshot(
             LocalDate date,
             LocalTime startTime,
@@ -468,4 +1843,5 @@ public class ReplanService {
             );
         }
     }
+
 }

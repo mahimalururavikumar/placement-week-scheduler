@@ -8,14 +8,7 @@ import java.time.LocalDate;
 import java.util.*;
 import java.util.stream.Collectors;
 
-import com.mirailabs.scheduler.repository.CompanyRepository;
-import com.mirailabs.scheduler.repository.CompanySlotRepository;
-import com.mirailabs.scheduler.repository.InterviewRepository;
-import com.mirailabs.scheduler.repository.PanelRepository;
-import com.mirailabs.scheduler.repository.RoomRepository;
-import com.mirailabs.scheduler.repository.ShortlistRepository;
-import com.mirailabs.scheduler.repository.StudentRepository;
-import com.mirailabs.scheduler.repository.CandidateDecisionRepository;
+import com.mirailabs.scheduler.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -34,6 +27,7 @@ public class DatasetGeneratorService {
     private final ShortlistRepository shortlistRepository;
     private final InterviewRepository interviewRepository;
     private final  CandidateDecisionRepository candidateDecisionRepository;
+    private final ReplanAuditRepository replanAuditRepository;
 
 
     public void generateDataset() {
@@ -187,6 +181,8 @@ public class DatasetGeneratorService {
     }
 
     private void clearExistingData() {
+
+        replanAuditRepository.deleteAllInBatch();
 
         interviewRepository.deleteAllInBatch();
 

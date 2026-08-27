@@ -5,11 +5,7 @@ import com.mirailabs.scheduler.entity.CompanySlot;
 import com.mirailabs.scheduler.entity.Interview;
 import com.mirailabs.scheduler.entity.InterviewStatus;
 import com.mirailabs.scheduler.entity.StudentStatus;
-import com.mirailabs.scheduler.repository.CompanySlotRepository;
-import com.mirailabs.scheduler.repository.InterviewRepository;
-import com.mirailabs.scheduler.repository.PanelRepository;
-import com.mirailabs.scheduler.repository.RoomRepository;
-import com.mirailabs.scheduler.repository.StudentRepository;
+import com.mirailabs.scheduler.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -28,6 +24,7 @@ public class MetricsService {
     private final RoomRepository roomRepository;
     private final PanelRepository panelRepository;
     private final CompanySlotRepository companySlotRepository;
+    private final ReplanAuditRepository replanAuditRepository;
 
     public MetricsSummary calculateSummary() {
 
@@ -104,6 +101,8 @@ public class MetricsService {
                         0,
                         activeStudents - studentsWithInterview
                 );
+        long replanMovedAppointments =
+                replanAuditRepository.countByMovedTrue();
 
         return new MetricsSummary(
                 totalCandidates,
@@ -118,7 +117,7 @@ public class MetricsService {
                 roomUtilization,
                 panelUtilization,
                 averageWaiting,
-                0
+                replanMovedAppointments
         );
     }
 

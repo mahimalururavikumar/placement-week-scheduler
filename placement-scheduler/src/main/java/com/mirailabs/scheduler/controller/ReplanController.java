@@ -1,8 +1,6 @@
 package com.mirailabs.scheduler.controller;
 
-import com.mirailabs.scheduler.replan.ReplanResult;
-import com.mirailabs.scheduler.replan.ReplanService;
-import com.mirailabs.scheduler.replan.RoomUnavailableRequest;
+import com.mirailabs.scheduler.replan.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -22,6 +20,26 @@ public class ReplanController {
                 replanService.replanRoomUnavailable(
                         request
                 )
+        );
+    }
+
+    @PostMapping("/panel-drop")
+    public ResponseEntity<PanelDropoutResult> panelDropout(
+            @RequestBody PanelDropoutRequest request) {
+
+        return ResponseEntity.ok(
+                replanService.replanPanelDropout(
+                        request
+                )
+        );
+    }
+
+    @PostMapping("/company-delay")
+    public ResponseEntity<CompanyDelayResult> companyDelay(
+            @RequestBody CompanyDelayRequest request) {
+
+        return ResponseEntity.ok(
+                replanService.replanCompanyDelay(request)
         );
     }
 }
