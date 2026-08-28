@@ -2,17 +2,15 @@
 FROM maven:3.9.9-eclipse-temurin-21-alpine AS build
 WORKDIR /app
 
-# Copy Maven descriptor & wrapper
+# Copy Maven descriptor
 COPY pom.xml .
-COPY mvnw .
-COPY .mvn .mvn
 
 # Download dependencies offline for layer caching
-RUN ./mvnw dependency:go-offline -B || true
+RUN mvn dependency:go-offline -B || true
 
 # Copy source code & build artifact
 COPY src ./src
-RUN ./mvnw clean package -DskipTests
+RUN mvn clean package -DskipTests
 
 # Stage 2: Runtime stage
 FROM eclipse-temurin:21-jre-alpine AS runtime
