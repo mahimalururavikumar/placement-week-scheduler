@@ -28,8 +28,18 @@ public class MetricsService {
 
     public MetricsSummary calculateSummary() {
 
+        long start = System.currentTimeMillis();
+
+        System.out.println("METRICS: started");
+
         List<Interview> interviews =
                 interviewRepository.findAll();
+
+        System.out.println(
+                "METRICS: findAll = "
+                        + (System.currentTimeMillis() - start)
+                        + " ms"
+        );
 
         List<Interview> scheduled =
                 interviews.stream()
@@ -37,6 +47,12 @@ public class MetricsService {
                                 interview.getStatus()
                                         == InterviewStatus.SCHEDULED)
                         .toList();
+
+        System.out.println(
+                "METRICS: scheduled filter = "
+                        + (System.currentTimeMillis() - start)
+                        + " ms"
+        );
 
         long activeStudents;
 

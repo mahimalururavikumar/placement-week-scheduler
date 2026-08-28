@@ -1,0 +1,345 @@
+<div class="dashboard">
+
+  <!-- Header -->
+
+  <div class="dashboard-header">
+
+    <div>
+      <span class="eyebrow">OPERATIONS OVERVIEW</span>
+
+      <h1>Placement Dashboard</h1>
+
+      <p>
+        Monitor scheduling performance, resource utilization,
+        and placement coverage.
+      </p>
+    </div>
+
+    <button
+      class="refresh-button"
+      (click)="refresh()"
+      [disabled]="loading"
+    >
+      <span>↻</span>
+      Refresh
+    </button>
+
+  </div>
+
+
+  <!-- Loading -->
+
+  <div
+    class="state-card"
+    *ngIf="loading"
+  >
+    <div class="spinner"></div>
+
+    <span>
+      Loading dashboard data...
+    </span>
+  </div>
+
+
+  <!-- Error -->
+
+  <div
+    class="state-card error"
+    *ngIf="!loading && error"
+  >
+    <div class="state-icon">!</div>
+
+    <div>
+      <strong>Unable to load dashboard</strong>
+
+      <p>
+        Make sure the Spring Boot backend is running.
+      </p>
+    </div>
+
+    <button
+      class="retry-button"
+      (click)="refresh()"
+    >
+      Retry
+    </button>
+  </div>
+
+
+  <!-- Dashboard -->
+
+  <ng-container *ngIf="!loading && !error && metrics">
+
+    <!-- KPI cards -->
+
+    <section class="kpi-grid">
+
+      <div class="kpi-card primary">
+
+        <div class="kpi-top">
+          <span class="kpi-label">
+            SCHEDULED
+          </span>
+
+          <span class="kpi-icon">✓</span>
+        </div>
+
+        <div class="kpi-value">
+          {{ metrics.scheduledInterviews | number }}
+        </div>
+
+        <div class="kpi-description">
+          Interviews successfully scheduled
+        </div>
+
+      </div>
+
+
+      <div class="kpi-card">
+
+        <div class="kpi-top">
+          <span class="kpi-label">
+            UNSCHEDULED
+          </span>
+
+          <span class="kpi-icon warning">!</span>
+        </div>
+
+        <div class="kpi-value">
+          {{ metrics.unscheduledInterviews | number }}
+        </div>
+
+        <div class="kpi-description">
+          Candidates without a schedule
+        </div>
+
+      </div>
+
+
+      <div class="kpi-card">
+
+        <div class="kpi-top">
+          <span class="kpi-label">
+            STUDENT COVERAGE
+          </span>
+
+          <span class="kpi-icon">◉</span>
+        </div>
+
+        <div class="kpi-value">
+          {{ metrics.studentCoveragePercentage | number:'1.1-1' }}%
+        </div>
+
+        <div class="kpi-description">
+          Students receiving at least one interview
+        </div>
+
+      </div>
+
+
+      <div class="kpi-card">
+
+        <div class="kpi-top">
+          <span class="kpi-label">
+            SCHEDULING SUCCESS
+          </span>
+
+          <span class="kpi-icon">↗</span>
+        </div>
+
+        <div class="kpi-value">
+          {{ metrics.schedulingSuccessPercentage | number:'1.1-1' }}%
+        </div>
+
+        <div class="kpi-description">
+          Interview candidates successfully placed
+        </div>
+
+      </div>
+
+    </section>
+
+
+    <!-- Secondary metrics -->
+
+    <section class="content-grid">
+
+      <div class="panel">
+
+        <div class="panel-header">
+
+          <div>
+            <span class="eyebrow">RESOURCE HEALTH</span>
+            <h2>Utilization</h2>
+          </div>
+
+        </div>
+
+
+        <div class="utilization-item">
+
+          <div class="utilization-header">
+
+            <span>Room utilization</span>
+
+            <strong>
+              {{ metrics.roomUtilizationPercentage | number:'1.1-1' }}%
+            </strong>
+
+          </div>
+
+          <div class="progress">
+            <div
+              class="progress-fill"
+              [style.width.%]="metrics.roomUtilizationPercentage"
+            ></div>
+          </div>
+
+        </div>
+
+
+        <div class="utilization-item">
+
+          <div class="utilization-header">
+
+            <span>Panel utilization</span>
+
+            <strong>
+              {{ metrics.panelUtilizationPercentage | number:'1.1-1' }}%
+            </strong>
+
+          </div>
+
+          <div class="progress">
+            <div
+              class="progress-fill"
+              [style.width.%]="metrics.panelUtilizationPercentage"
+            ></div>
+          </div>
+
+        </div>
+
+      </div>
+
+
+      <div class="panel">
+
+        <div class="panel-header">
+
+          <div>
+            <span class="eyebrow">STUDENT EXPERIENCE</span>
+            <h2>Interview Load</h2>
+          </div>
+
+        </div>
+
+
+        <div class="stat-row">
+
+          <span>Active students</span>
+
+          <strong>
+            {{ metrics.totalActiveStudents | number }}
+          </strong>
+
+        </div>
+
+
+        <div class="stat-row">
+
+          <span>Students with interviews</span>
+
+          <strong>
+            {{ metrics.studentsWithInterview | number }}
+          </strong>
+
+        </div>
+
+
+        <div class="stat-row">
+
+          <span>Average waiting time</span>
+
+          <strong>
+            {{ metrics.averageStudentWaitingMinutes | number:'1.0-1' }}
+            min
+          </strong>
+
+        </div>
+
+      </div>
+
+    </section>
+
+
+    <!-- Schedule overview -->
+
+    <section class="schedule-overview">
+
+      <div class="section-heading">
+
+        <div>
+          <span class="eyebrow">PLACEMENT WEEK</span>
+          <h2>Schedule Overview</h2>
+        </div>
+
+        <span class="live-badge">
+          <span></span>
+          LIVE DATA
+        </span>
+
+      </div>
+
+
+      <div class="overview-grid">
+
+        <div class="overview-item">
+
+          <span>Total candidates</span>
+
+          <strong>
+            {{ metrics.totalInterviewCandidates | number }}
+          </strong>
+
+        </div>
+
+
+        <div class="overview-item">
+
+          <span>Scheduled</span>
+
+          <strong class="success-text">
+            {{ metrics.scheduledInterviews | number }}
+          </strong>
+
+        </div>
+
+
+        <div class="overview-item">
+
+          <span>Unscheduled</span>
+
+          <strong class="warning-text">
+            {{ metrics.unscheduledInterviews | number }}
+          </strong>
+
+        </div>
+
+
+        <div class="overview-item">
+
+          <span>Replanned moves</span>
+
+          <strong>
+            {{ metrics.replanMovedAppointments | number }}
+          </strong>
+
+        </div>
+
+      </div>
+
+    </section>
+
+  </ng-container>
+
+</div>

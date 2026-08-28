@@ -1,0 +1,493 @@
+<div class="schedule-page">
+
+  <!-- Header -->
+
+  <div class="schedule-header">
+
+    <div>
+      <span class="eyebrow">
+        PLACEMENT OPERATIONS
+      </span>
+
+      <h1>Interview Schedule</h1>
+
+      <p>
+        View and manage the current placement week schedule.
+      </p>
+    </div>
+
+    <div class="header-actions">
+
+      <button
+        class="secondary-button"
+        type="button"
+        (click)="refresh()"
+        [disabled]="loading || generating"
+      >
+        ↻ Refresh
+      </button>
+
+      <button
+        class="primary-button"
+        type="button"
+        (click)="generateSchedule()"
+        [disabled]="generating"
+      >
+        <span *ngIf="!generating">
+          Generate Schedule
+        </span>
+
+        <span *ngIf="generating">
+          Generating...
+        </span>
+      </button>
+
+    </div>
+
+  </div>
+
+
+  <!-- Generation message -->
+
+  <div
+    class="success-message"
+    *ngIf="generationMessage && !error"
+  >
+    ✓ {{ generationMessage }}
+  </div>
+
+
+  <!-- Filters -->
+
+  <section class="filter-panel">
+
+    <div class="filter-group">
+
+      <label for="schedule-date">
+        Date
+      </label>
+
+      <input
+        id="schedule-date"
+        type="date"
+        [(ngModel)]="selectedDate"
+        (change)="loadSchedule()"
+      />
+
+    </div>
+
+
+    <div class="filter-group">
+
+      <label for="company-id">
+        Company ID
+      </label>
+
+      <input
+        id="company-id"
+        type="number"
+        min="1"
+        placeholder="All companies"
+        [(ngModel)]="selectedCompanyId"
+        (change)="loadSchedule()"
+      />
+
+    </div>
+
+
+    <div class="filter-group">
+
+      <label for="student-id">
+        Student ID
+      </label>
+
+      <input
+        id="student-id"
+        type="number"
+        min="1"
+        placeholder="All students"
+        [(ngModel)]="selectedStudentId"
+        (change)="loadSchedule()"
+      />
+
+    </div>
+
+
+    <div class="filter-group">
+
+      <label for="room-id">
+        Room ID
+      </label>
+
+      <input
+        id="room-id"
+        type="number"
+        min="1"
+        placeholder="All rooms"
+        [(ngModel)]="selectedRoomId"
+        (change)="loadSchedule()"
+      />
+
+    </div>
+
+
+    <div class="filter-group">
+
+      <label for="panel-id">
+        Panel ID
+      </label>
+
+      <input
+        id="panel-id"
+        type="number"
+        min="1"
+        placeholder="All panels"
+        [(ngModel)]="selectedPanelId"
+        (change)="loadSchedule()"
+      />
+
+    </div>
+
+
+    <button
+      class="clear-button"
+      type="button"
+      (click)="clearFilters()"
+    >
+      Clear Filters
+    </button>
+
+  </section>
+
+
+  <!-- Summary -->
+
+  <div class="schedule-summary">
+
+    <div class="result-count">
+
+      Showing
+      <strong>
+        {{ schedules.length | number }}
+      </strong>
+      interviews
+
+    </div>
+
+
+    <div class="summary-badges">
+
+      <span class="summary-badge scheduled">
+        {{ scheduledCount | number }}
+        Scheduled
+      </span>
+
+      <span class="summary-badge unscheduled">
+        {{ unscheduledCount | number }}
+        Unscheduled
+      </span>
+
+    </div>
+
+  </div>
+
+
+  <!-- Loading -->
+
+  <div
+    class="state-card"
+    *ngIf="loading"
+  >
+
+    <div class="spinner"></div>
+
+    <span>
+      Loading schedule...
+    </span>
+
+  </div>
+
+
+  <!-- Error -->
+
+  <div
+    class="state-card error-card"
+    *ngIf="!loading && error"
+  >
+
+    <div class="empty-icon">
+      !
+    </div>
+
+    <strong>
+      Unable to load the schedule
+    </strong>
+
+    <span>
+      Make sure the Spring Boot backend is running.
+    </span>
+
+    <button
+      class="retry-button"
+      type="button"
+      (click)="refresh()"
+    >
+      Retry
+    </button>
+
+  </div>
+
+
+  <!-- Empty -->
+
+  <div
+    class="state-card"
+    *ngIf="
+      !loading &&
+      !error &&
+      schedules.length === 0
+    "
+  >
+
+    <div class="empty-icon">
+      —
+    </div>
+
+    <strong>
+      No interviews found
+    </strong>
+
+    <span>
+      Try changing the filters or generate a schedule.
+    </span>
+
+  </div>
+
+
+  <!-- Desktop table -->
+
+  <div
+    class="table-container"
+    *ngIf="
+      !loading &&
+      !error &&
+      schedules.length > 0
+    "
+  >
+
+    <table class="schedule-table">
+
+      <thead>
+
+        <tr>
+
+          <th>Time</th>
+          <th>Student</th>
+          <th>Company</th>
+          <th>Panel</th>
+          <th>Room</th>
+          <th>Date</th>
+          <th>Status</th>
+
+        </tr>
+
+      </thead>
+
+
+      <tbody>
+
+        <tr
+          *ngFor="
+            let item of schedules;
+            trackBy: trackByInterviewId
+          "
+        >
+
+          <td class="time-cell">
+
+            {{ item.startTime }}
+
+            <small>
+              {{ item.endTime }}
+            </small>
+
+          </td>
+
+
+          <td>
+
+            <span class="student-code">
+              {{ item.studentCode }}
+            </span>
+
+          </td>
+
+
+          <td>
+
+            <span class="company-code">
+              {{ item.companyCode }}
+            </span>
+
+          </td>
+
+
+          <td>
+
+            <span
+              class="resource-code"
+              *ngIf="item.panelCode"
+            >
+              {{ item.panelCode }}
+            </span>
+
+            <span *ngIf="!item.panelCode">
+              —
+            </span>
+
+          </td>
+
+
+          <td>
+
+            <span
+              class="resource-code"
+              *ngIf="item.roomCode"
+            >
+              {{ item.roomCode }}
+            </span>
+
+            <span *ngIf="!item.roomCode">
+              —
+            </span>
+
+          </td>
+
+
+          <td>
+            {{ item.date }}
+          </td>
+
+
+          <td>
+
+            <span
+              class="schedule-status"
+              [class.scheduled]="
+                item.status === 'SCHEDULED'
+              "
+              [class.unscheduled]="
+                item.status === 'UNSCHEDULED'
+              "
+            >
+              {{ item.status }}
+            </span>
+
+          </td>
+
+        </tr>
+
+      </tbody>
+
+    </table>
+
+  </div>
+
+
+  <!-- Mobile cards -->
+
+  <div
+    class="mobile-schedule"
+    *ngIf="
+      !loading &&
+      !error &&
+      schedules.length > 0
+    "
+  >
+
+    <div
+      class="schedule-card"
+      *ngFor="
+        let item of schedules;
+        trackBy: trackByInterviewId
+      "
+    >
+
+      <div class="card-top">
+
+        <div>
+
+          <div class="card-time">
+            {{ item.startTime }}
+            –
+            {{ item.endTime }}
+          </div>
+
+          <div class="card-company">
+            {{ item.companyCode }}
+          </div>
+
+        </div>
+
+        <span
+          class="schedule-status"
+          [class.scheduled]="
+            item.status === 'SCHEDULED'
+          "
+          [class.unscheduled]="
+            item.status === 'UNSCHEDULED'
+          "
+        >
+          {{ item.status }}
+        </span>
+
+      </div>
+
+
+      <div class="card-details">
+
+        <div>
+
+          <span class="detail-label">
+            Student
+          </span>
+
+          <span class="detail-value">
+            {{ item.studentCode }}
+          </span>
+
+        </div>
+
+
+        <div>
+
+          <span class="detail-label">
+            Panel
+          </span>
+
+          <span class="detail-value">
+            {{ item.panelCode || '—' }}
+          </span>
+
+        </div>
+
+
+        <div>
+
+          <span class="detail-label">
+            Room
+          </span>
+
+          <span class="detail-value">
+            {{ item.roomCode || '—' }}
+          </span>
+
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+
+</div>

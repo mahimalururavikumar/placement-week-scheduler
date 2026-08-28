@@ -1,8 +1,10 @@
 package com.mirailabs.scheduler.controller;
 
+import com.mirailabs.scheduler.schedule.ScheduleGenerationResult;
 import com.mirailabs.scheduler.schedule.ScheduleItem;
 import com.mirailabs.scheduler.schedule.ScheduleService;
 import com.mirailabs.scheduler.schedule.ScheduleSummary;
+import com.mirailabs.scheduler.schedule.SchedulingEngine;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
@@ -17,6 +19,27 @@ import java.util.List;
 public class SchedulingController {
 
     private final ScheduleService scheduleService;
+
+    private final SchedulingEngine schedulingEngine;
+
+    /*
+     * --------------------------------------------------
+     * GENERATE INITIAL SCHEDULE
+     *
+     * POST /api/scheduling/generate
+     *
+     * This calls the actual SchedulingEngine and returns
+     * the generation result.
+     * --------------------------------------------------
+     */
+    @PostMapping("/generate")
+    public ResponseEntity<ScheduleGenerationResult> generateSchedule() {
+
+        ScheduleGenerationResult result =
+                schedulingEngine.generateInitialSchedule();
+
+        return ResponseEntity.ok(result);
+    }
 
     /*
      * --------------------------------------------------
@@ -171,6 +194,11 @@ public class SchedulingController {
         );
     }
 
+    /*
+     * --------------------------------------------------
+     * SCHEDULE SUMMARY
+     * --------------------------------------------------
+     */
     @GetMapping("/schedule/summary")
     public ResponseEntity<ScheduleSummary> getScheduleSummary() {
 

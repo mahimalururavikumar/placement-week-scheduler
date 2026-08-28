@@ -1,0 +1,80 @@
+<div class="app-shell">
+
+  <aside class="sidebar">
+
+    <div class="brand">
+      <div class="brand-icon">PS</div>
+
+      <div>
+        <h1>Placement Week</h1>
+        <span>Scheduler</span>
+      </div>
+    </div>
+
+    <nav class="navigation">
+
+      <a
+        routerLink="/dashboard"
+        routerLinkActive="active"
+        [routerLinkActiveOptions]="{ exact: true }"
+      >
+        <span>⌂</span>
+        Dashboard
+      </a>
+
+      <a
+        routerLink="/schedule"
+        routerLinkActive="active"
+      >
+        <span>▣</span>
+        Schedule
+      </a>
+
+      <a
+        routerLink="/conflicts"
+        routerLinkActive="active"
+      >
+        <span>⚠</span>
+        Conflicts
+      </a>
+
+      <a
+        routerLink="/replan-history"
+        routerLinkActive="active"
+      >
+        <span>↻</span>
+        Replan History
+      </a>
+
+    </nav>
+
+    <div class="sidebar-footer">
+      <span class="status-dot"></span>
+      Scheduling System Online
+    </div>
+
+  </aside>
+
+  <main class="main-content">
+
+    <header class="topbar">
+
+      <div>
+        <span class="page-label">PLACEMENT OPERATIONS</span>
+        <h2>Placement Week Scheduler</h2>
+      </div>
+
+      <div class="system-status">
+        <span class="status-dot"></span>
+        Backend Connected
+      </div>
+
+    </header>
+
+    <section class="page-content">
+      <router-outlet></router-outlet>
+    </section>
+
+  </main>
+
+</div>
