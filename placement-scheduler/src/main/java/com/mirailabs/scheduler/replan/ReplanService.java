@@ -19,6 +19,7 @@ import java.util.Objects;
 
 @Service
 @RequiredArgsConstructor
+@SuppressWarnings("null")
 public class ReplanService {
 
     private static final int SLOT_GRANULARITY_MINUTES = 15;
@@ -1425,11 +1426,10 @@ public class ReplanService {
                 continue;
             }
 
-            /*
-             * --------------------------------------------------
-             * CASE 3: One-level displacement
-             * --------------------------------------------------
-             */
+            if (displacementPlan == null) {
+                continue;
+            }
+
             Interview displaced =
                     displacementPlan.displacedInterview();
 

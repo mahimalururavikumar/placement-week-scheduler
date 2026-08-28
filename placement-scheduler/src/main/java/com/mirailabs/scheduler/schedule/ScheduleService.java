@@ -13,6 +13,7 @@ import java.util.List;
 
 @Service
 @RequiredArgsConstructor
+@SuppressWarnings("null")
 public class ScheduleService {
 
     private final InterviewRepository interviewRepository;
@@ -84,34 +85,27 @@ public class ScheduleService {
             Interview interview) {
 
         return new ScheduleItem(
-
                 interview.getId(),
+
+                interview.getStudent() != null ? interview.getStudent().getId() : null,
+                interview.getStudent() != null ? interview.getStudent().getStudentCode() : null,
+                interview.getStudent() != null ? interview.getStudent().getName() : null,
+
+                interview.getCompany() != null ? interview.getCompany().getId() : null,
+                interview.getCompany() != null ? interview.getCompany().getCompanyCode() : null,
+                interview.getCompany() != null ? interview.getCompany().getName() : null,
+                interview.getCompany() != null && interview.getCompany().getPriorityTier() != null
+                        ? interview.getCompany().getPriorityTier().name() : null,
+
+                interview.getPanel() != null ? interview.getPanel().getId() : null,
+                interview.getPanel() != null ? interview.getPanel().getPanelCode() : null,
+
+                interview.getRoom() != null ? interview.getRoom().getId() : null,
+                interview.getRoom() != null ? interview.getRoom().getRoomCode() : null,
 
                 interview.getDate(),
                 interview.getStartTime(),
                 interview.getEndTime(),
-
-                interview.getStudent()
-                        .getStudentCode(),
-
-                interview.getStudent()
-                        .getName(),
-
-                interview.getCompany()
-                        .getCompanyCode(),
-
-                interview.getCompany()
-                        .getName(),
-
-                interview.getCompany()
-                        .getPriorityTier()
-                        .name(),
-
-                interview.getPanel()
-                        .getPanelCode(),
-
-                interview.getRoom()
-                        .getRoomCode(),
 
                 interview.getStatus()
         );

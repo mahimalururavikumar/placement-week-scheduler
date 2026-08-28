@@ -1,6 +1,41 @@
 <div class="app-shell">
 
-  <aside class="sidebar">
+  <!-- Mobile Backdrop Overlay -->
+  <div
+    class="sidebar-overlay"
+    [class.show]="isSidebarOpen"
+    (click)="closeSidebar()"
+  ></div>
+
+  <!-- Global Toast Notifications Container -->
+  <div class="toast-container" aria-live="polite">
+    <div
+      *ngFor="let toast of (toasts$ | async)"
+      class="toast-card"
+      [ngClass]="'toast-' + toast.type"
+    >
+      <div class="toast-icon">
+        <span *ngIf="toast.type === 'error'">🚨</span>
+        <span *ngIf="toast.type === 'success'">✅</span>
+        <span *ngIf="toast.type === 'warning'">⚠️</span>
+        <span *ngIf="toast.type === 'info'">ℹ️</span>
+      </div>
+      <div class="toast-body">
+        <h4 class="toast-title">{{ toast.title }}</h4>
+        <p class="toast-message">{{ toast.message }}</p>
+      </div>
+      <button
+        class="toast-close"
+        (click)="dismissToast(toast.id)"
+        aria-label="Dismiss Notification"
+      >
+        ✕
+      </button>
+    </div>
+  </div>
+
+  <!-- Sidebar Navigation -->
+  <aside class="sidebar" [class.open]="isSidebarOpen">
 
     <div class="brand">
       <div class="brand-icon">PS</div>
@@ -9,6 +44,10 @@
         <h1>Placement Week</h1>
         <span>Scheduler</span>
       </div>
+
+      <button class="mobile-close-btn" (click)="closeSidebar()" aria-label="Close Sidebar">
+        ✕
+      </button>
     </div>
 
     <nav class="navigation">
@@ -17,56 +56,69 @@
         routerLink="/dashboard"
         routerLinkActive="active"
         [routerLinkActiveOptions]="{ exact: true }"
+        (click)="closeSidebar()"
       >
-        <span>⌂</span>
+        <span class="nav-icon">🏠</span>
         Dashboard
       </a>
 
       <a
         routerLink="/schedule"
         routerLinkActive="active"
+        (click)="closeSidebar()"
       >
-        <span>▣</span>
+        <span class="nav-icon">📅</span>
         Schedule
       </a>
 
       <a
         routerLink="/conflicts"
         routerLinkActive="active"
+        (click)="closeSidebar()"
       >
-        <span>⚠</span>
+        <span class="nav-icon">⚠</span>
         Conflicts
       </a>
 
       <a
         routerLink="/replan-history"
         routerLinkActive="active"
+        (click)="closeSidebar()"
       >
-        <span>↻</span>
-        Replan History
+        <span class="nav-icon">🔄</span>
+        Replanning
       </a>
 
     </nav>
 
     <div class="sidebar-footer">
-      <span class="status-dot"></span>
-      Scheduling System Online
+      <div class="dataset-summary-badge">
+        <span class="status-dot online"></span>
+        <span>Placement Operations Online</span>
+      </div>
     </div>
 
   </aside>
 
+  <!-- Main Content Area -->
   <main class="main-content">
 
     <header class="topbar">
 
-      <div>
-        <span class="page-label">PLACEMENT OPERATIONS</span>
-        <h2>Placement Week Scheduler</h2>
+      <div class="topbar-left">
+        <button class="mobile-menu-btn" (click)="toggleSidebar()" aria-label="Toggle Navigation">
+          ☰
+        </button>
+
+        <div>
+          <span class="page-label">PLACEMENT OPERATIONS</span>
+          <h2>Placement Week Operations Center</h2>
+        </div>
       </div>
 
       <div class="system-status">
-        <span class="status-dot"></span>
-        Backend Connected
+        <span class="status-dot online"></span>
+        <span class="status-text">Backend Connected</span>
       </div>
 
     </header>

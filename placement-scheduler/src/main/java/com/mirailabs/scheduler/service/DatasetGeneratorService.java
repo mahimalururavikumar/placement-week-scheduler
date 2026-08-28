@@ -14,6 +14,7 @@ import org.springframework.stereotype.Service;
 
 @Service
 @RequiredArgsConstructor
+@SuppressWarnings("null")
 public class DatasetGeneratorService {
 
     private final Random random =
@@ -42,14 +43,11 @@ public class DatasetGeneratorService {
         List<Student> students =
                 generateStudents();
 
-        List<Room> rooms =
-                generateRooms();
+        generateRooms();
 
-        List<Panel> panels =
-                generatePanels(companies);
+        generatePanels(companies);
 
-        List<CompanySlot> companySlots =
-                generateCompanySlots(companies);
+        generateCompanySlots(companies);
 
         List<CandidateDecision> decisions =
                 evaluateCandidateEligibility(
@@ -63,10 +61,9 @@ public class DatasetGeneratorService {
                         decisions
                 );
 
-        List<Interview> interviews =
-                generateInterviewCandidates(
-                        shortlists
-                );
+        generateInterviewCandidates(
+                shortlists
+        );
     }
 
     private static final List<String> COMPANY_NAMES = List.of(

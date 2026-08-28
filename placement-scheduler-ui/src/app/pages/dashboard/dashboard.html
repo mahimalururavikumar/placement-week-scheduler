@@ -1,343 +1,298 @@
 <div class="dashboard">
 
-  <!-- Header -->
-
+  <!-- Operational Flow Header -->
   <div class="dashboard-header">
 
     <div>
-      <span class="eyebrow">OPERATIONS OVERVIEW</span>
-
-      <h1>Placement Dashboard</h1>
-
+      <span class="eyebrow">PLACEMENT OPERATIONS DASHBOARD</span>
+      <h1>Placement Week Operations Center</h1>
       <p>
-        Monitor scheduling performance, resource utilization,
-        and placement coverage.
+        Manage campus recruitment dataset, schedule generation, live disruptions, and resource metrics.
       </p>
     </div>
 
-    <button
-      class="refresh-button"
-      (click)="refresh()"
-      [disabled]="loading"
-    >
-      <span>↻</span>
-      Refresh
-    </button>
+    <div class="header-actions">
+      <button
+        class="refresh-button"
+        (click)="refresh()"
+        [disabled]="loading"
+      >
+        <span>↻</span>
+        Refresh Data
+      </button>
+    </div>
 
   </div>
 
-
-  <!-- Loading -->
-
-  <div
-    class="state-card"
-    *ngIf="loading"
-  >
+  <!-- Loading State -->
+  <div class="state-card" *ngIf="loading">
     <div class="spinner"></div>
-
-    <span>
-      Loading dashboard data...
-    </span>
+    <span>Connecting to Placement Engine...</span>
   </div>
 
-
-  <!-- Error -->
-
-  <div
-    class="state-card error"
-    *ngIf="!loading && error"
-  >
-    <div class="state-icon">!</div>
-
+  <!-- Error State -->
+  <div class="state-card error" *ngIf="!loading && error">
+    <div class="state-icon">⚠</div>
     <div>
-      <strong>Unable to load dashboard</strong>
-
-      <p>
-        Make sure the Spring Boot backend is running.
-      </p>
+      <strong>Unable to connect to backend</strong>
+      <p>Ensure the Spring Boot backend server is active on http://localhost:8080</p>
     </div>
-
-    <button
-      class="retry-button"
-      (click)="refresh()"
-    >
-      Retry
-    </button>
+    <button class="retry-button" (click)="refresh()">Retry</button>
   </div>
-
-
-  <!-- Dashboard -->
 
   <ng-container *ngIf="!loading && !error && metrics">
 
-    <!-- KPI cards -->
-
-    <section class="kpi-grid">
-
-      <div class="kpi-card primary">
-
-        <div class="kpi-top">
-          <span class="kpi-label">
-            SCHEDULED
-          </span>
-
-          <span class="kpi-icon">✓</span>
-        </div>
-
-        <div class="kpi-value">
-          {{ metrics.scheduledInterviews | number }}
-        </div>
-
-        <div class="kpi-description">
-          Interviews successfully scheduled
-        </div>
-
-      </div>
-
-
-      <div class="kpi-card">
-
-        <div class="kpi-top">
-          <span class="kpi-label">
-            UNSCHEDULED
-          </span>
-
-          <span class="kpi-icon warning">!</span>
-        </div>
-
-        <div class="kpi-value">
-          {{ metrics.unscheduledInterviews | number }}
-        </div>
-
-        <div class="kpi-description">
-          Candidates without a schedule
-        </div>
-
-      </div>
-
-
-      <div class="kpi-card">
-
-        <div class="kpi-top">
-          <span class="kpi-label">
-            STUDENT COVERAGE
-          </span>
-
-          <span class="kpi-icon">◉</span>
-        </div>
-
-        <div class="kpi-value">
-          {{ metrics.studentCoveragePercentage | number:'1.1-1' }}%
-        </div>
-
-        <div class="kpi-description">
-          Students receiving at least one interview
-        </div>
-
-      </div>
-
-
-      <div class="kpi-card">
-
-        <div class="kpi-top">
-          <span class="kpi-label">
-            SCHEDULING SUCCESS
-          </span>
-
-          <span class="kpi-icon">↗</span>
-        </div>
-
-        <div class="kpi-value">
-          {{ metrics.schedulingSuccessPercentage | number:'1.1-1' }}%
-        </div>
-
-        <div class="kpi-description">
-          Interview candidates successfully placed
-        </div>
-
-      </div>
-
-    </section>
-
-
-    <!-- Secondary metrics -->
-
-    <section class="content-grid">
-
-      <div class="panel">
-
-        <div class="panel-header">
-
-          <div>
-            <span class="eyebrow">RESOURCE HEALTH</span>
-            <h2>Utilization</h2>
-          </div>
-
-        </div>
-
-
-        <div class="utilization-item">
-
-          <div class="utilization-header">
-
-            <span>Room utilization</span>
-
-            <strong>
-              {{ metrics.roomUtilizationPercentage | number:'1.1-1' }}%
-            </strong>
-
-          </div>
-
-          <div class="progress">
-            <div
-              class="progress-fill"
-              [style.width.%]="metrics.roomUtilizationPercentage"
-            ></div>
-          </div>
-
-        </div>
-
-
-        <div class="utilization-item">
-
-          <div class="utilization-header">
-
-            <span>Panel utilization</span>
-
-            <strong>
-              {{ metrics.panelUtilizationPercentage | number:'1.1-1' }}%
-            </strong>
-
-          </div>
-
-          <div class="progress">
-            <div
-              class="progress-fill"
-              [style.width.%]="metrics.panelUtilizationPercentage"
-            ></div>
-          </div>
-
-        </div>
-
-      </div>
-
-
-      <div class="panel">
-
-        <div class="panel-header">
-
-          <div>
-            <span class="eyebrow">STUDENT EXPERIENCE</span>
-            <h2>Interview Load</h2>
-          </div>
-
-        </div>
-
-
-        <div class="stat-row">
-
-          <span>Active students</span>
-
-          <strong>
-            {{ metrics.totalActiveStudents | number }}
-          </strong>
-
-        </div>
-
-
-        <div class="stat-row">
-
-          <span>Students with interviews</span>
-
-          <strong>
-            {{ metrics.studentsWithInterview | number }}
-          </strong>
-
-        </div>
-
-
-        <div class="stat-row">
-
-          <span>Average waiting time</span>
-
-          <strong>
-            {{ metrics.averageStudentWaitingMinutes | number:'1.0-1' }}
-            min
-          </strong>
-
-        </div>
-
-      </div>
-
-    </section>
-
-
-    <!-- Schedule overview -->
-
-    <section class="schedule-overview">
-
-      <div class="section-heading">
-
-        <div>
-          <span class="eyebrow">PLACEMENT WEEK</span>
-          <h2>Schedule Overview</h2>
-        </div>
-
-        <span class="live-badge">
-          <span></span>
-          LIVE DATA
+    <!-- Operational State Banner -->
+    <section class="operational-status-bar" [ngClass]="scheduleState.toLowerCase()">
+      <div class="status-info">
+        <span class="status-indicator-badge">
+          <span class="pulse-dot"></span>
+          <ng-container *ngIf="scheduleState === 'NOT_GENERATED'">⚪ DATASET READY - SCHEDULE NOT GENERATED</ng-container>
+          <ng-container *ngIf="scheduleState === 'GENERATED'">🟢 SCHEDULE GENERATED &amp; ACTIVE</ng-container>
+          <ng-container *ngIf="scheduleState === 'REPLANNED'">🟡 REPLANNED - LIVE DISRUPTION HANDLED</ng-container>
         </span>
-
+        <p class="status-subtext">
+          <ng-container *ngIf="scheduleState === 'NOT_GENERATED'">
+            Dataset initialized with {{ companyCount }} Companies, {{ studentCount }} Students, and {{ roomCount }} Rooms. Click Generate Schedule below to run the scheduling engine.
+          </ng-container>
+          <ng-container *ngIf="scheduleState === 'GENERATED'">
+            Initial schedule successfully computed. {{ metrics.scheduledInterviews | number }} interviews assigned across placement dates.
+          </ng-container>
+          <ng-container *ngIf="scheduleState === 'REPLANNED'">
+            Replan engine has handled live disruptions. {{ metrics.replanMovedAppointments | number }} appointments modified.
+          </ng-container>
+        </p>
       </div>
 
+      <div class="status-actions">
+        <button
+          class="btn btn-primary"
+          *ngIf="scheduleState === 'NOT_GENERATED'"
+          (click)="generateSchedule()"
+          [disabled]="generating"
+        >
+          <span *ngIf="generating" class="btn-spinner"></span>
+          <span>⚡ Generate Schedule</span>
+        </button>
 
-      <div class="overview-grid">
+        <button
+          class="btn btn-secondary"
+          *ngIf="scheduleState !== 'NOT_GENERATED'"
+          (click)="navigateTo('/schedule')"
+        >
+          📅 View Schedule
+        </button>
 
-        <div class="overview-item">
+        <button
+          class="btn btn-warning"
+          *ngIf="scheduleState !== 'NOT_GENERATED'"
+          (click)="navigateTo('/conflicts')"
+        >
+          ⚠ Open Conflict Center
+        </button>
+      </div>
+    </section>
 
-          <span>Total candidates</span>
-
-          <strong>
-            {{ metrics.totalInterviewCandidates | number }}
-          </strong>
-
+    <!-- Generation Result Alert (if triggered) -->
+    <div class="generation-result-banner" *ngIf="generationResult">
+      <div class="result-icon">✓</div>
+      <div>
+        <strong>{{ generationResult.message }}</strong>
+        <div class="result-pills">
+          <span>Total Candidates: <strong>{{ generationResult.totalCandidates | number }}</strong></span>
+          <span>Scheduled: <strong class="text-success">{{ generationResult.scheduled | number }}</strong></span>
+          <span>Unscheduled: <strong class="text-warning">{{ generationResult.unscheduled | number }}</strong></span>
         </div>
+      </div>
+      <button class="btn-close" (click)="generationResult = null">✕</button>
+    </div>
 
-
-        <div class="overview-item">
-
-          <span>Scheduled</span>
-
-          <strong class="success-text">
-            {{ metrics.scheduledInterviews | number }}
-          </strong>
-
+    <!-- Step 1: DATASET GENERATION CARD -->
+    <section class="step-card">
+      <div class="step-card-header">
+        <div class="step-number">1</div>
+        <div>
+          <h3>Dataset Pipeline</h3>
+          <p>Initial placement drive configuration and candidate registry</p>
         </div>
-
-
-        <div class="overview-item">
-
-          <span>Unscheduled</span>
-
-          <strong class="warning-text">
-            {{ metrics.unscheduledInterviews | number }}
-          </strong>
-
-        </div>
-
-
-        <div class="overview-item">
-
-          <span>Replanned moves</span>
-
-          <strong>
-            {{ metrics.replanMovedAppointments | number }}
-          </strong>
-
-        </div>
-
+        <div class="badge badge-success">✓ Dataset Ready</div>
       </div>
 
+      <div class="dataset-stats-grid">
+        <div class="stat-pill">
+          <span class="stat-label">COMPANIES</span>
+          <strong class="stat-value">{{ companyCount }}</strong>
+          <span class="stat-sub">3 Tiers</span>
+        </div>
+
+        <div class="stat-pill">
+          <span class="stat-label">STUDENTS</span>
+          <strong class="stat-value">{{ studentCount }}</strong>
+          <span class="stat-sub">{{ metrics.totalActiveStudents }} Active</span>
+        </div>
+
+        <div class="stat-pill">
+          <span class="stat-label">ROOMS</span>
+          <strong class="stat-value">{{ roomCount }}</strong>
+          <span class="stat-sub">20 Active Venues</span>
+        </div>
+
+        <div class="stat-pill">
+          <span class="stat-label">CANDIDATES</span>
+          <strong class="stat-value">{{ metrics.totalInterviewCandidates | number }}</strong>
+          <span class="stat-sub">Shortlisted Entries</span>
+        </div>
+      </div>
+
+      <div class="step-card-footer">
+        <button class="btn btn-outline" (click)="resetDataset()" [disabled]="generating">
+          ↻ Reset / Regenerate Dataset
+        </button>
+        <span class="help-text">Resets candidate registry and clears previous schedules</span>
+      </div>
+    </section>
+
+    <!-- Step 2: SCHEDULING ENGINE CONTROL -->
+    <section class="step-card">
+      <div class="step-card-header">
+        <div class="step-number">2</div>
+        <div>
+          <h3>Scheduling Engine</h3>
+          <p>Automated constraint solver & candidate placement engine</p>
+        </div>
+        <div class="badge" [ngClass]="scheduleState === 'NOT_GENERATED' ? 'badge-pending' : 'badge-success'">
+          {{ scheduleState === 'NOT_GENERATED' ? 'Pending Run' : 'Schedule Computed' }}
+        </div>
+      </div>
+
+      <div class="engine-summary">
+        <p>
+          Executes global interview allocation enforcing non-overlapping student slots, panel availability, room capacities, company priority tiering, and minimum wait-time distribution.
+        </p>
+
+        <div class="engine-actions">
+          <button
+            class="btn btn-primary btn-lg"
+            (click)="generateSchedule()"
+            [disabled]="generating"
+          >
+            <span *ngIf="generating" class="btn-spinner"></span>
+            <span>⚡ Run Scheduling Engine</span>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Step 3: LIVE METRICS & RESOURCE UTILIZATION -->
+    <section class="step-card">
+      <div class="step-card-header">
+        <div class="step-number">3</div>
+        <div>
+          <h3>Live Operational Analytics</h3>
+          <p>Real-time coverage metrics and resource utilization health</p>
+        </div>
+        <span class="live-badge"><span></span> LIVE DATA</span>
+      </div>
+
+      <!-- KPI Grid -->
+      <div class="kpi-grid">
+        <div class="kpi-card primary">
+          <div class="kpi-top">
+            <span class="kpi-label">SCHEDULED INTERVIEWS</span>
+            <span class="kpi-icon">✓</span>
+          </div>
+          <div class="kpi-value">{{ metrics.scheduledInterviews | number }}</div>
+          <div class="kpi-description">Successfully assigned time slots</div>
+        </div>
+
+        <div class="kpi-card warning">
+          <div class="kpi-top">
+            <span class="kpi-label">UNSCHEDULED CANDIDATES</span>
+            <span class="kpi-icon">!</span>
+          </div>
+          <div class="kpi-value">{{ metrics.unscheduledInterviews | number }}</div>
+          <div class="kpi-description">Candidates constrained by capacity</div>
+        </div>
+
+        <div class="kpi-card">
+          <div class="kpi-top">
+            <span class="kpi-label">STUDENT COVERAGE</span>
+            <span class="kpi-icon">◉</span>
+          </div>
+          <div class="kpi-value">{{ metrics.studentCoveragePercentage | number:'1.1-1' }}%</div>
+          <div class="kpi-description">Students receiving ≥ 1 interview</div>
+        </div>
+
+        <div class="kpi-card">
+          <div class="kpi-top">
+            <span class="kpi-label">SCHEDULING SUCCESS</span>
+            <span class="kpi-icon">↗</span>
+          </div>
+          <div class="kpi-value">{{ metrics.schedulingSuccessPercentage | number:'1.1-1' }}%</div>
+          <div class="kpi-description">Shortlists successfully scheduled</div>
+        </div>
+      </div>
+
+      <!-- Secondary Metrics & Utilization -->
+      <div class="content-grid">
+        <div class="panel">
+          <div class="panel-header">
+            <div>
+              <span class="eyebrow">RESOURCE UTILIZATION</span>
+              <h4>Facility & Panel Efficiency</h4>
+            </div>
+          </div>
+
+          <div class="utilization-item">
+            <div class="utilization-header">
+              <span>Room Utilization (20 Rooms)</span>
+              <strong>{{ metrics.roomUtilizationPercentage | number:'1.1-1' }}%</strong>
+            </div>
+            <div class="progress">
+              <div class="progress-fill" [style.width.%]="metrics.roomUtilizationPercentage"></div>
+            </div>
+          </div>
+
+          <div class="utilization-item">
+            <div class="utilization-header">
+              <span>Panel Utilization</span>
+              <strong>{{ metrics.panelUtilizationPercentage | number:'1.1-1' }}%</strong>
+            </div>
+            <div class="progress">
+              <div class="progress-fill panel-fill" [style.width.%]="metrics.panelUtilizationPercentage"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-header">
+            <div>
+              <span class="eyebrow">STUDENT EXPERIENCE</span>
+              <h4>Interview Load Breakdown</h4>
+            </div>
+          </div>
+
+          <div class="stat-row">
+            <span>Total Active Students</span>
+            <strong>{{ metrics.totalActiveStudents | number }}</strong>
+          </div>
+
+          <div class="stat-row">
+            <span>Students with Interviews</span>
+            <strong>{{ metrics.studentsWithInterview | number }}</strong>
+          </div>
+
+          <div class="stat-row">
+            <span>Average Student Waiting Time</span>
+            <strong>{{ metrics.averageStudentWaitingMinutes | number:'1.0-1' }} min</strong>
+          </div>
+
+          <div class="stat-row">
+            <span>Replanned Appointment Shifts</span>
+            <strong class="text-primary">{{ metrics.replanMovedAppointments | number }}</strong>
+          </div>
+        </div>
+      </div>
     </section>
 
   </ng-container>

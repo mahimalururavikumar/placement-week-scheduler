@@ -1,1 +1,114 @@
-<p>replan-history works!</p>
+<div class="replan-history-page">
+
+  <!-- Header -->
+  <div class="page-header">
+    <div>
+      <span class="eyebrow">AUDIT LOGS</span>
+      <h1>🔄 Replan &amp; Conflict History</h1>
+      <p>Audit trail of all operational disruptions and dynamic schedule adjustments.</p>
+    </div>
+
+    <button class="btn btn-secondary" (click)="refresh()" [disabled]="loading">
+      <span>↻</span> Refresh History
+    </button>
+  </div>
+
+  <!-- Summary Cards -->
+  <div class="metrics-row" *ngIf="!loading">
+    <div class="metric-card">
+      <span class="label">TOTAL REPLAN EVENTS</span>
+      <strong class="value">{{ filteredItems.length | number }}</strong>
+    </div>
+
+    <div class="metric-card">
+      <span class="label">APPOINTMENTS MOVED</span>
+      <strong class="value text-primary">{{ getMovedCount() | number }}</strong>
+    </div>
+
+    <div class="metric-card">
+      <span class="label">APPOINTMENTS CANCELLED</span>
+      <strong class="value text-warning">{{ getCancelledCount() | number }}</strong>
+    </div>
+  </div>
+
+  <!-- Filter Card -->
+  <div class="filter-card">
+    <div class="filter-grid">
+      <div class="filter-group">
+        <label>Disruption Type</label>
+        <select [(ngModel)]="selectedType" (change)="applyFilters()">
+          <option *ngFor="let t of disruptionTypes" [value]="t.value">{{ t.label }}</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- Loading State -->
+  <div class="state-card" *ngIf="loading">
+    <div class="spinner"></div>
+    <span>Loading audit logs...</span>
+  </div>
+
+  <!-- Empty State -->
+  <div class="state-card empty" *ngIf="!loading && filteredItems.length === 0">
+    <div class="state-icon">🔄</div>
+    <h3>No Replan Audit History</h3>
+    <p>Simulate operational disruptions in the <strong>Conflict Center</strong> to populate real-time replan history.</p>
+  </div>
+
+  <!-- History Timeline Table -->
+  <div class="table-card" *ngIf="!loading && filteredItems.length > 0">
+    <div class="table-responsive">
+      <table class="history-table">
+        <thead>
+          <tr>
+            <th>Timestamp</th>
+            <th>Disruption Type</th>
+            <th>Interview ID</th>
+            <th>Before (Original)</th>
+            <th>After (Replanned)</th>
+            <th>Result Status</th>
+            <th>Reason</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let item of filteredItems">
+            <td class="cell-time">{{ item.replannedAt ? (item.replannedAt | date:'mediumTime') : '—' }}</td>
+            <td>
+              <span class="type-badge">
+                <span>{{ getDisruptionIcon(item.disruptionType) }}</span>
+                <span>{{ formatDisruptionName(item.disruptionType) }}</span>
+              </span>
+            </td>
+            <td><strong>#{{ item.interviewId }}</strong></td>
+            <td>
+              <span class="slot-badge before">
+                {{ item.oldDate || '—' }} {{ item.oldStartTime ? item.oldStartTime.substring(0,5) : '—' }}
+              </span>
+            </td>
+            <td>
+              <span class="slot-badge after" *ngIf="item.newStartTime">
+                {{ item.newDate || '—' }} {{ item.newStartTime ? item.newStartTime.substring(0,5) : '—' }}
+              </span>
+              <span class="text-muted" *ngIf="!item.newStartTime">—</span>
+            </td>
+            <td>
+              <span
+                class="status-pill"
+                [ngClass]="{
+                  'pill-moved': item.moved,
+                  'pill-cancelled': item.cancelled,
+                  'pill-same': !item.moved && !item.cancelled
+                }"
+              >
+                {{ item.moved ? 'MOVED' : item.cancelled ? 'CANCELLED' : 'SAME' }}
+              </span>
+            </td>
+            <td class="cell-reason">{{ item.reason || '—' }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>

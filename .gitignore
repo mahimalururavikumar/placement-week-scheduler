@@ -1,0 +1,50 @@
+# ===================================================================
+# PlacementWeekScheduler Master .gitignore
+# ===================================================================
+
+# Environment files & Secret credentials (NEVER COMMIT TO GITHUB)
+.env
+.env.local
+.env.*.local
+*.env
+*.key
+*.pem
+*.pfx
+
+# Backend Target & Build output (Maven / Spring Boot)
+placement-scheduler/target/
+placement-scheduler/build/
+placement-scheduler/.mvn/wrapper/maven-wrapper.jar
+placement-scheduler/HELP.md
+
+# Frontend Build & Node Output (Angular)
+placement-scheduler-ui/dist/
+placement-scheduler-ui/tmp/
+placement-scheduler-ui/out-tsc/
+placement-scheduler-ui/node_modules/
+placement-scheduler-ui/.angular/
+placement-scheduler-ui/npm-debug.log
+placement-scheduler-ui/yarn-error.log
+
+# IDEs & Editor Configuration
+.idea/
+*.iws
+*.iml
+*.ipr
+.vscode/
+.qodo/
+.project
+.classpath
+.settings/
+.apt_generated
+.factorypath
+
+# OS / System Temporary Files
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Log Files
+*.log
+logs/

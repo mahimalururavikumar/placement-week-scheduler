@@ -1,572 +1,261 @@
 <div class="schedule-page">
 
   <!-- Header -->
-
-  <div class="schedule-header">
-
+  <div class="page-header">
     <div>
-      <span class="eyebrow">
-        PLACEMENT OPERATIONS
-      </span>
-
-      <h1>Interview Schedule</h1>
-
-      <p>
-        View and manage the current placement week schedule.
-      </p>
+      <span class="eyebrow">OPERATIONS TIMELINE</span>
+      <h1>Master Placement Schedule</h1>
+      <p>Operational timeline of interview allocations across dates, rooms, companies, and panels.</p>
     </div>
 
     <div class="header-actions">
+      <button class="btn btn-secondary" (click)="refresh()" [disabled]="loading || generating">
+        <span>↻</span> Refresh
+      </button>
 
-  <button
-    class="secondary-button"
-    type="button"
-    (click)="refresh()"
-    [disabled]="loading || generating"
-  >
-    <span *ngIf="!loading">
-      ↻ Refresh
-    </span>
-
-    <span *ngIf="loading">
-      Refreshing...
-    </span>
-  </button>
-
-
-  <button
-    class="primary-button"
-    type="button"
-    (click)="generateSchedule()"
-    [disabled]="loading || generating"
-  >
-    <span *ngIf="!generating">
-      Generate Schedule
-    </span>
-
-    <span *ngIf="generating">
-      Generating...
-    </span>
-  </button>
-
-</div>
-
+      <button class="btn btn-primary" (click)="generateSchedule()" [disabled]="generating || loading">
+        <span *ngIf="generating" class="btn-spinner"></span>
+        <span>⚡ Generate Schedule</span>
+      </button>
+    </div>
   </div>
 
+  <!-- Status & Control Toolbar -->
+  <div class="toolbar-card">
+    <div class="status-indicator">
+      <span class="status-dot" [ngClass]="scheduleGenerated ? 'online' : 'offline'"></span>
+      <strong>Schedule Status:</strong>
+      <span>{{ scheduleGenerated ? '● Schedule Generated' : '⚪ Not Generated (Click Generate Schedule)' }}</span>
+    </div>
 
-  <!-- Generation message -->
-
-  <div
-    class="success-message"
-    *ngIf="generationMessage && !error"
-  >
-    ✓ {{ generationMessage }}
+    <div class="view-toggle">
+      <button class="toggle-btn" [class.active]="viewMode === 'timeline'" (click)="viewMode = 'timeline'">
+        ⏱ Timeline View
+      </button>
+      <button class="toggle-btn" [class.active]="viewMode === 'grid'" (click)="viewMode = 'grid'">
+        📋 Table View
+      </button>
+    </div>
   </div>
 
-
-  <!-- Filters -->
-
-  <!-- Filters -->
-
-<section class="filter-panel">
-
-  <div class="filter-heading">
-
-    <div>
-      <span class="eyebrow">
-        SCHEDULE FILTERS
-      </span>
-
-      <h2>Find Interviews</h2>
-    </div>
-
-    <span
-      class="filter-count"
-      *ngIf="activeFilterCount > 0"
-    >
-      {{ activeFilterCount }}
-      active
-      {{ activeFilterCount === 1 ? 'filter' : 'filters' }}
-    </span>
-
+  <!-- Alert Message -->
+  <div class="alert-banner" *ngIf="generationMessage">
+    <span>ℹ {{ generationMessage }}</span>
+    <button class="btn-close" (click)="generationMessage = ''">✕</button>
   </div>
 
+  <!-- Filter Bar Card -->
+  <div class="filter-card">
+    <div class="filter-header">
+      <div class="filter-title">
+        <span>🔍 Filters &amp; Controls</span>
+        <span class="active-badge" *ngIf="activeFilterCount > 0">{{ activeFilterCount }} Active</span>
+      </div>
 
-  <div class="filter-fields">
-
-
-    <!-- DATE -->
-
-    <div class="filter-group">
-
-      <label for="schedule-date">
-        Date
-      </label>
-
-      <input
-        id="schedule-date"
-        type="date"
-        [(ngModel)]="selectedDate"
-      />
-
+      <button class="btn-text" (click)="clearFilters()" *ngIf="activeFilterCount > 0">
+        Clear All Filters
+      </button>
     </div>
 
+    <div class="filter-grid">
 
-    <!-- COMPANY -->
+      <!-- Date Filter -->
+      <div class="filter-group">
+        <label>Date</label>
+        <select [(ngModel)]="selectedDate" (change)="onFilterChange()">
+          <option value="">All Placement Dates</option>
+          <option *ngFor="let date of availableDates" [value]="date">
+            {{ date }} (Day {{ availableDates.indexOf(date) + 1 }})
+          </option>
+        </select>
+      </div>
 
-    <div class="filter-group">
+      <!-- Company Filter -->
+      <div class="filter-group">
+        <label>Company</label>
+        <select [(ngModel)]="selectedCompanyId" (change)="onFilterChange()">
+          <option [ngValue]="null">All Companies</option>
+          <option *ngFor="let c of availableCompanies" [ngValue]="c.id">
+            {{ c.name }} ({{ c.code }})
+          </option>
+        </select>
+      </div>
 
-      <label for="company-id">
-        Company ID
-      </label>
+      <!-- Tier Filter -->
+      <div class="filter-group">
+        <label>Priority Tier</label>
+        <select [(ngModel)]="selectedTier" (change)="applyLocalFilters()">
+          <option value="">All Tiers</option>
+          <option *ngFor="let t of availableTiers" [value]="t">{{ t }}</option>
+        </select>
+      </div>
 
-      <input
-        id="company-id"
-        type="number"
-        min="1"
-        step="1"
-        inputmode="numeric"
-        placeholder="All companies"
-        [(ngModel)]="selectedCompanyId"
-      />
+      <!-- Room Filter -->
+      <div class="filter-group">
+        <label>Room</label>
+        <select [(ngModel)]="selectedRoomId" (change)="onFilterChange()">
+          <option [ngValue]="null">All Rooms</option>
+          <option *ngFor="let r of availableRooms" [ngValue]="r.id">
+            {{ r.name }}
+          </option>
+        </select>
+      </div>
 
-    </div>
+      <!-- Panel Filter -->
+      <div class="filter-group">
+        <label>Panel</label>
+        <select [(ngModel)]="selectedPanelId" (change)="onFilterChange()">
+          <option [ngValue]="null">All Panels</option>
+          <option *ngFor="let p of availablePanels" [ngValue]="p.id">
+            {{ p.name }} ({{ p.subtext }})
+          </option>
+        </select>
+      </div>
 
-
-    <!-- STUDENT -->
-
-    <div class="filter-group">
-
-      <label for="student-id">
-        Student ID
-      </label>
-
-      <input
-        id="student-id"
-        type="number"
-        min="1"
-        step="1"
-        inputmode="numeric"
-        placeholder="All students"
-        [(ngModel)]="selectedStudentId"
-      />
-
-    </div>
-
-
-    <!-- ROOM -->
-
-    <div class="filter-group">
-
-      <label for="room-id">
-        Room ID
-      </label>
-
-      <input
-        id="room-id"
-        type="number"
-        min="1"
-        step="1"
-        inputmode="numeric"
-        placeholder="All rooms"
-        [(ngModel)]="selectedRoomId"
-      />
-
-    </div>
-
-
-    <!-- PANEL -->
-
-    <div class="filter-group">
-
-      <label for="panel-id">
-        Panel ID
-      </label>
-
-      <input
-        id="panel-id"
-        type="number"
-        min="1"
-        step="1"
-        inputmode="numeric"
-        placeholder="All panels"
-        [(ngModel)]="selectedPanelId"
-      />
+      <!-- Status Filter -->
+      <div class="filter-group">
+        <label>Status</label>
+        <select [(ngModel)]="selectedStatus" (change)="applyLocalFilters()">
+          <option value="">All Statuses</option>
+          <option value="SCHEDULED">Scheduled</option>
+          <option value="UNSCHEDULED">Unscheduled</option>
+        </select>
+      </div>
 
     </div>
-
-
   </div>
 
-
-  <!-- FILTER ACTIONS -->
-
-  <div class="filter-actions">
-
-    <button
-      class="apply-filter-button"
-      type="button"
-      (click)="applyFilters()"
-      [disabled]="loading || generating"
-    >
-
-      <span *ngIf="!loading">
-        Apply Filters
-      </span>
-
-      <span *ngIf="loading">
-        Applying...
-      </span>
-
-    </button>
-
-
-    <button
-      class="clear-button"
-      type="button"
-      (click)="clearFilters()"
-      [disabled]="
-        loading ||
-        generating ||
-        activeFilterCount === 0
-      "
-    >
-      Clear Filters
-    </button>
-
+  <!-- Summary Stats Bar -->
+  <div class="summary-stats-bar" *ngIf="!loading">
+    <div class="stat">
+      <span>Total Shown:</span>
+      <strong>{{ filteredSchedules.length | number }}</strong>
+    </div>
+    <div class="stat text-success">
+      <span>Scheduled:</span>
+      <strong>{{ scheduledCount | number }}</strong>
+    </div>
+    <div class="stat text-warning">
+      <span>Unscheduled:</span>
+      <strong>{{ unscheduledCount | number }}</strong>
+    </div>
   </div>
 
-</section>
-
-
-  <!-- Summary -->
-
-  <div class="schedule-summary">
-
-    <div class="result-count">
-
-      Showing
-      <strong>
-        {{ schedules.length | number }}
-      </strong>
-      interviews
-
-    </div>
-
-
-    <div class="summary-badges">
-
-      <span class="summary-badge scheduled">
-        {{ scheduledCount | number }}
-        Scheduled
-      </span>
-
-      <span class="summary-badge unscheduled">
-        {{ unscheduledCount | number }}
-        Unscheduled
-      </span>
-
-    </div>
-
-  </div>
-
-
-  <!-- Loading -->
-
-  <div
-    class="state-card"
-    *ngIf="loading"
-  >
-
+  <!-- Loading State -->
+  <div class="state-card" *ngIf="loading">
     <div class="spinner"></div>
-
-    <span>
-      Loading schedule...
-    </span>
-
+    <span>Loading schedule matrix...</span>
   </div>
 
-
-  <!-- Error -->
-
-  <div
-    class="state-card error-card"
-    *ngIf="!loading && error"
-  >
-
-    <div class="empty-icon">
-      !
-    </div>
-
-    <strong>
-      Unable to load the schedule
-    </strong>
-
-    <span>
-      Make sure the Spring Boot backend is running.
-    </span>
-
-    <button
-      class="retry-button"
-      type="button"
-      (click)="refresh()"
-    >
-      Retry
+  <!-- Empty / Not Generated State -->
+  <div class="state-card empty" *ngIf="!loading && filteredSchedules.length === 0">
+    <div class="state-icon">📅</div>
+    <h3>No Schedule Entries Found</h3>
+    <p *ngIf="scheduleGenerated">Try adjusting your filters or clearing active selections.</p>
+    <p *ngIf="!scheduleGenerated">Click <strong>Generate Schedule</strong> to compute the initial allocation matrix.</p>
+    <button class="btn btn-primary" (click)="generateSchedule()" *ngIf="!scheduleGenerated" [disabled]="generating">
+      ⚡ Generate Schedule Now
     </button>
-
   </div>
 
+  <!-- View 1: Timeline Grouped View -->
+  <div class="timeline-container" *ngIf="!loading && filteredSchedules.length > 0 && viewMode === 'timeline'">
+    <div class="time-block" *ngFor="let group of timeGroups">
 
-  <!-- Empty -->
+      <div class="time-header">
+        <div class="time-badge">
+          <span class="clock-icon">🕒</span>
+          <span>{{ group.time }}</span>
+        </div>
+        <div class="time-line"></div>
+        <div class="time-count">{{ group.items.length }} Interviews</div>
+      </div>
 
-  <div
-    class="state-card"
-    *ngIf="
-      !loading &&
-      !error &&
-      schedules.length === 0
-    "
-  >
-
-    <div class="empty-icon">
-      —
-    </div>
-
-    <strong>
-      No interviews found
-    </strong>
-
-    <span>
-      Try changing the filters or generate a schedule.
-    </span>
-
-  </div>
-
-
-  <!-- Desktop table -->
-
-  <div
-    class="table-container"
-    *ngIf="
-      !loading &&
-      !error &&
-      schedules.length > 0
-    "
-  >
-
-    <table class="schedule-table">
-
-      <thead>
-
-        <tr>
-
-          <th>Time</th>
-          <th>Student</th>
-          <th>Company</th>
-          <th>Panel</th>
-          <th>Room</th>
-          <th>Date</th>
-          <th>Status</th>
-
-        </tr>
-
-      </thead>
-
-
-      <tbody>
-
-        <tr
-          *ngFor="
-            let item of schedules;
-            trackBy: trackByInterviewId
-          "
+      <div class="timeline-items-grid">
+        <div
+          class="schedule-card"
+          *ngFor="let item of group.items"
+          [class.unscheduled-card]="item.status === 'UNSCHEDULED'"
         >
-
-          <td class="time-cell">
-
-            {{ item.startTime }}
-
-            <small>
-              {{ item.endTime }}
-            </small>
-
-          </td>
-
-
-          <td>
-
-            <span class="student-code">
-              {{ item.studentCode }}
-            </span>
-
-          </td>
-
-
-          <td>
-
-            <span class="company-code">
-              {{ item.companyCode }}
-            </span>
-
-          </td>
-
-
-          <td>
-
+          <div class="card-top">
+            <span class="room-pill">{{ item.roomCode || 'Unassigned' }}</span>
             <span
-              class="resource-code"
-              *ngIf="item.panelCode"
-            >
-              {{ item.panelCode }}
-            </span>
-
-            <span *ngIf="!item.panelCode">
-              —
-            </span>
-
-          </td>
-
-
-          <td>
-
-            <span
-              class="resource-code"
-              *ngIf="item.roomCode"
-            >
-              {{ item.roomCode }}
-            </span>
-
-            <span *ngIf="!item.roomCode">
-              —
-            </span>
-
-          </td>
-
-
-          <td>
-            {{ item.date }}
-          </td>
-
-
-          <td>
-
-            <span
-              class="schedule-status"
-              [class.scheduled]="
-                item.status === 'SCHEDULED'
-              "
-              [class.unscheduled]="
-                item.status === 'UNSCHEDULED'
-              "
+              class="status-pill"
+              [ngClass]="item.status === 'SCHEDULED' ? 'status-scheduled' : 'status-unscheduled'"
             >
               {{ item.status }}
             </span>
-
-          </td>
-
-        </tr>
-
-      </tbody>
-
-    </table>
-
-  </div>
-
-
-  <!-- Mobile cards -->
-
-  <div
-    class="mobile-schedule"
-    *ngIf="
-      !loading &&
-      !error &&
-      schedules.length > 0
-    "
-  >
-
-    <div
-      class="schedule-card"
-      *ngFor="
-        let item of schedules;
-        trackBy: trackByInterviewId
-      "
-    >
-
-      <div class="card-top">
-
-        <div>
-
-          <div class="card-time">
-            {{ item.startTime }}
-            –
-            {{ item.endTime }}
           </div>
 
-          <div class="card-company">
-            {{ item.companyCode }}
+          <div class="card-student">
+            <strong>{{ item.studentCode }}</strong>
+            <span>{{ item.studentName }}</span>
           </div>
 
+          <div class="card-meta">
+            <div class="meta-row">
+              <span class="meta-label">Company:</span>
+              <strong>{{ item.companyName }}</strong>
+            </div>
+
+            <div class="meta-row">
+              <span class="meta-label">Panel / Tier:</span>
+              <span>{{ item.panelCode || '—' }} ({{ item.priorityTier || '—' }})</span>
+            </div>
+
+            <div class="meta-row" *ngIf="item.date">
+              <span class="meta-label">Date:</span>
+              <span>{{ item.date }}</span>
+            </div>
+          </div>
         </div>
-
-        <span
-          class="schedule-status"
-          [class.scheduled]="
-            item.status === 'SCHEDULED'
-          "
-          [class.unscheduled]="
-            item.status === 'UNSCHEDULED'
-          "
-        >
-          {{ item.status }}
-        </span>
-
-      </div>
-
-
-      <div class="card-details">
-
-        <div>
-
-          <span class="detail-label">
-            Student
-          </span>
-
-          <span class="detail-value">
-            {{ item.studentCode }}
-          </span>
-
-        </div>
-
-
-        <div>
-
-          <span class="detail-label">
-            Panel
-          </span>
-
-          <span class="detail-value">
-            {{ item.panelCode || '—' }}
-          </span>
-
-        </div>
-
-
-        <div>
-
-          <span class="detail-label">
-            Room
-          </span>
-
-          <span class="detail-value">
-            {{ item.roomCode || '—' }}
-          </span>
-
-        </div>
-
       </div>
 
     </div>
+  </div>
 
+  <!-- View 2: Detailed Table View -->
+  <div class="table-card" *ngIf="!loading && filteredSchedules.length > 0 && viewMode === 'grid'">
+    <div class="table-responsive">
+      <table class="schedule-table">
+        <thead>
+          <tr>
+            <th>Time</th>
+            <th>Date</th>
+            <th>Room</th>
+            <th>Student Code</th>
+            <th>Student Name</th>
+            <th>Company</th>
+            <th>Tier</th>
+            <th>Panel</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr
+            *ngFor="let item of filteredSchedules"
+            [class.row-unscheduled]="item.status === 'UNSCHEDULED'"
+          >
+            <td class="cell-time">{{ item.startTime ? item.startTime.substring(0,5) : '—' }} - {{ item.endTime ? item.endTime.substring(0,5) : '—' }}</td>
+            <td>{{ item.date || '—' }}</td>
+            <td><span class="badge-code">{{ item.roomCode || '—' }}</span></td>
+            <td><strong>{{ item.studentCode }}</strong></td>
+            <td>{{ item.studentName }}</td>
+            <td>{{ item.companyName }}</td>
+            <td><span class="tier-pill">{{ item.priorityTier || '—' }}</span></td>
+            <td>{{ item.panelCode || '—' }}</td>
+            <td>
+              <span
+                class="status-pill"
+                [ngClass]="item.status === 'SCHEDULED' ? 'status-scheduled' : 'status-unscheduled'"
+              >
+                {{ item.status }}
+              </span>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
   </div>
 
 </div>

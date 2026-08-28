@@ -4,6 +4,8 @@ export interface MetricsSummary {
   unscheduledInterviews: number;
   totalActiveStudents: number;
   studentsWithInterview: number;
+  studentsWithMultipleInterviews?: number;
+  studentsWithoutInterview?: number;
   schedulingSuccessPercentage: number;
   studentCoveragePercentage: number;
   roomUtilizationPercentage: number;

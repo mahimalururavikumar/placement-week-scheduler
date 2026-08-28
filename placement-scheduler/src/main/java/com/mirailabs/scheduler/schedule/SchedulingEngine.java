@@ -18,6 +18,7 @@ import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
+@SuppressWarnings("null")
 public class SchedulingEngine {
 
     private static final int SLOT_GRANULARITY_MINUTES = 15;
@@ -29,8 +30,6 @@ public class SchedulingEngine {
 
     private final ConstraintChecker constraintChecker =
             new ConstraintChecker();
-    private final Map<Long, Integer> companyAvailabilityDays =
-            new HashMap<>();
 
     @Transactional
     public ScheduleGenerationResult generateInitialSchedule() {
@@ -354,52 +353,6 @@ public class SchedulingEngine {
          */
         return candidate.startTime()
                 .isBefore(currentBest.startTime());
-    }
-
-    private int calculateFlexibility(
-            Interview interview,
-            Map<Long, List<CompanySlot>> slotsByCompany,
-            Map<Long, List<Panel>> panelsByCompany) {
-
-        Long companyId =
-                interview.getCompany().getId();
-
-        List<CompanySlot> slots =
-                slotsByCompany.getOrDefault(
-                        companyId,
-                        List.of()
-                );
-
-        List<Panel> panels =
-                panelsByCompany.getOrDefault(
-                        companyId,
-                        List.of()
-                );
-
-        int duration =
-                interview.getCompany()
-                        .getInterviewDurationMinutes();
-
-        int possibleIntervals = 0;
-
-        for (CompanySlot slot : slots) {
-
-            LocalTime current =
-                    slot.getStartTime();
-
-            while (!current.plusMinutes(duration)
-                    .isAfter(slot.getEndTime())) {
-
-                possibleIntervals++;
-
-                current = current.plusMinutes(
-                        SLOT_GRANULARITY_MINUTES
-                );
-            }
-        }
-
-        return possibleIntervals
-                * Math.max(panels.size(), 1);
     }
 
     private Map<Long, List<CompanySlot>> groupSlotsByCompany(

@@ -1,17 +1,19 @@
 export interface ScheduleItem {
   interviewId: number;
-  studentId: number;
+
+  studentId?: number;
   studentCode: string;
   studentName: string;
 
-  companyId: number;
+  companyId?: number;
   companyCode: string;
   companyName: string;
+  priorityTier?: string;
 
-  panelId: number;
+  panelId?: number;
   panelCode: string;
 
-  roomId: number;
+  roomId?: number;
   roomCode: string;
 
   date: string;
@@ -19,4 +21,11 @@ export interface ScheduleItem {
   endTime: string;
 
   status: string;
+}
+
+export interface OptionItem {
+  id: number;
+  code: string;
+  name: string;
+  subtext?: string;
 }

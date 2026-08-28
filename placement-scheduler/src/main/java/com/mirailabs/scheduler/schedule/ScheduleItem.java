@@ -9,20 +9,24 @@ public record ScheduleItem(
 
         Long interviewId,
 
-        LocalDate date,
-        LocalTime startTime,
-        LocalTime endTime,
-
+        Long studentId,
         String studentCode,
         String studentName,
 
+        Long companyId,
         String companyCode,
         String companyName,
-
         String priorityTier,
 
+        Long panelId,
         String panelCode,
+
+        Long roomId,
         String roomCode,
+
+        LocalDate date,
+        LocalTime startTime,
+        LocalTime endTime,
 
         InterviewStatus status
 ) {

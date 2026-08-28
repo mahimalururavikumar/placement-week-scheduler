@@ -1,1 +1,314 @@
-<p>conflicts works!</p>
+<div class="conflicts-page">
+
+  <!-- Header -->
+  <div class="page-header">
+    <div>
+      <span class="eyebrow">OPERATIONS CENTER</span>
+      <h1>⚠️ Conflict &amp; Disruption Operations</h1>
+      <p>Simulate real-time operational disruptions and execute minimal-cost schedule replanning.</p>
+    </div>
+  </div>
+
+  <!-- Disruption Selector Cards Grid -->
+  <div class="disruption-grid">
+
+    <!-- Card 1: Room Unavailable -->
+    <div
+      class="disruption-card"
+      [class.active]="activeDisruption === 'ROOM_UNAVAILABLE'"
+      (click)="selectDisruption('ROOM_UNAVAILABLE')"
+    >
+      <div class="card-icon room-icon">🚪</div>
+      <div class="card-content">
+        <h3>Room Unavailable</h3>
+        <p>Simulate a room or interview venue becoming unusable due to technical failure or maintenance.</p>
+      </div>
+      <button class="btn btn-outline card-btn">
+        {{ activeDisruption === 'ROOM_UNAVAILABLE' ? 'Selected' : 'Simulate' }}
+      </button>
+    </div>
+
+    <!-- Card 2: Company Delay -->
+    <div
+      class="disruption-card"
+      [class.active]="activeDisruption === 'COMPANY_DELAY'"
+      (click)="selectDisruption('COMPANY_DELAY')"
+    >
+      <div class="card-icon company-icon">🏢</div>
+      <div class="card-content">
+        <h3>Company Delay</h3>
+        <p>Simulate a company arriving late for their recruitment drive (e.g. 09:00 → 11:00 arrival shift).</p>
+      </div>
+      <button class="btn btn-outline card-btn">
+        {{ activeDisruption === 'COMPANY_DELAY' ? 'Selected' : 'Simulate' }}
+      </button>
+    </div>
+
+    <!-- Card 3: Student Withdrawal -->
+    <div
+      class="disruption-card"
+      [class.active]="activeDisruption === 'STUDENT_WITHDRAW'"
+      (click)="selectDisruption('STUDENT_WITHDRAW')"
+    >
+      <div class="card-icon student-icon">👤</div>
+      <div class="card-content">
+        <h3>Student Withdrawal</h3>
+        <p>Simulate a candidate withdrawing from placement drives after receiving a pre-placement offer.</p>
+      </div>
+      <button class="btn btn-outline card-btn">
+        {{ activeDisruption === 'STUDENT_WITHDRAW' ? 'Selected' : 'Simulate' }}
+      </button>
+    </div>
+
+    <!-- Card 4: Panel Dropout -->
+    <div
+      class="disruption-card"
+      [class.active]="activeDisruption === 'PANEL_DROPOUT'"
+      (click)="selectDisruption('PANEL_DROPOUT')"
+    >
+      <div class="card-icon panel-icon">👥</div>
+      <div class="card-content">
+        <h3>Panel Dropout</h3>
+        <p>Simulate an interview panel member becoming unavailable during placement week.</p>
+      </div>
+      <button class="btn btn-outline card-btn">
+        {{ activeDisruption === 'PANEL_DROPOUT' ? 'Selected' : 'Simulate' }}
+      </button>
+    </div>
+
+  </div>
+
+  <!-- Interactive Conflict Form Modal / Section -->
+  <div class="form-container-card" *ngIf="activeDisruption">
+    <div class="form-header">
+      <div class="form-title">
+        <span class="title-icon">⚡</span>
+        <h3 *ngIf="activeDisruption === 'ROOM_UNAVAILABLE'">🚪 Room Unavailable Simulation</h3>
+        <h3 *ngIf="activeDisruption === 'COMPANY_DELAY'">🏢 Company Delay Simulation</h3>
+        <h3 *ngIf="activeDisruption === 'STUDENT_WITHDRAW'">👤 Student Withdrawal Simulation</h3>
+        <h3 *ngIf="activeDisruption === 'PANEL_DROPOUT'">👥 Panel Dropout Simulation</h3>
+      </div>
+      <button class="btn-close" (click)="closeForm()">✕ Close</button>
+    </div>
+
+    <div class="form-body">
+      <!-- 🚪 Form 1: Room Unavailable -->
+      <div class="form-fields-grid" *ngIf="activeDisruption === 'ROOM_UNAVAILABLE'">
+        <div class="field-group">
+          <label>Placement Date</label>
+          <select [(ngModel)]="selectedDate" (change)="fetchImpactPreview()">
+            <option *ngFor="let d of availableDates" [value]="d">{{ d }}</option>
+          </select>
+        </div>
+
+        <div class="field-group">
+          <label>Affected Room</label>
+          <select [(ngModel)]="selectedRoomId" (change)="fetchImpactPreview()">
+            <option *ngFor="let r of availableRooms" [ngValue]="r.id">{{ r.name }}</option>
+          </select>
+        </div>
+
+        <div class="field-group full-width">
+          <label>Reason / Notes</label>
+          <input type="text" [(ngModel)]="disruptionReason" placeholder="e.g., Projector failure, AC breakdown" />
+        </div>
+      </div>
+
+      <!-- 🏢 Form 2: Company Delay -->
+      <div class="form-fields-grid" *ngIf="activeDisruption === 'COMPANY_DELAY'">
+        <div class="field-group">
+          <label>Company</label>
+          <select [(ngModel)]="selectedCompanyId" (change)="fetchImpactPreview()">
+            <option *ngFor="let c of availableCompanies" [ngValue]="c.id">{{ c.name }} ({{ c.code }})</option>
+          </select>
+        </div>
+
+        <div class="field-group">
+          <label>Placement Date</label>
+          <select [(ngModel)]="selectedDate" (change)="fetchImpactPreview()">
+            <option *ngFor="let d of availableDates" [value]="d">{{ d }}</option>
+          </select>
+        </div>
+
+        <div class="field-group">
+          <label>Original Start Time</label>
+          <input type="text" value="09:00 AM" disabled class="input-disabled" />
+        </div>
+
+        <div class="field-group">
+          <label>New Delayed Start Time</label>
+          <select [(ngModel)]="newStartTime">
+            <option value="10:00">10:00 AM (1 Hour Delay)</option>
+            <option value="11:00">11:00 AM (2 Hours Delay)</option>
+            <option value="12:00">12:00 PM (3 Hours Delay)</option>
+            <option value="13:00">01:00 PM (4 Hours Delay)</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- 👤 Form 3: Student Withdrawal -->
+      <div class="form-fields-grid" *ngIf="activeDisruption === 'STUDENT_WITHDRAW'">
+        <div class="field-group full-width">
+          <label>Select Student</label>
+          <select [(ngModel)]="selectedStudentId" (change)="fetchImpactPreview()">
+            <option *ngFor="let s of availableStudents" [ngValue]="s.id">{{ s.name }}</option>
+          </select>
+        </div>
+
+        <div class="field-group full-width">
+          <label>Withdrawal Reason</label>
+          <input type="text" [(ngModel)]="disruptionReason" placeholder="e.g., Received off-campus offer" />
+        </div>
+      </div>
+
+      <!-- 👥 Form 4: Panel Dropout -->
+      <div class="form-fields-grid" *ngIf="activeDisruption === 'PANEL_DROPOUT'">
+        <div class="field-group">
+          <label>Company</label>
+          <select [(ngModel)]="selectedCompanyId" (change)="fetchImpactPreview()">
+            <option *ngFor="let c of availableCompanies" [ngValue]="c.id">{{ c.name }} ({{ c.code }})</option>
+          </select>
+        </div>
+
+        <div class="field-group">
+          <label>Select Panel</label>
+          <select [(ngModel)]="selectedPanelId" (change)="fetchImpactPreview()">
+            <option *ngFor="let p of availablePanels" [ngValue]="p.id">{{ p.name }} ({{ p.subtext }})</option>
+          </select>
+        </div>
+
+        <div class="field-group">
+          <label>Placement Date</label>
+          <select [(ngModel)]="selectedDate" (change)="fetchImpactPreview()">
+            <option *ngFor="let d of availableDates" [value]="d">{{ d }}</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Impact Preview Section -->
+      <div class="impact-preview-box">
+        <div class="preview-header">
+          <span>🔍 Affected Appointments Preview</span>
+          <span class="preview-count" *ngIf="!loadingImpact">{{ impactPreview.length }} Scheduled Interviews Affected</span>
+          <span class="spinner-sm" *ngIf="loadingImpact"></span>
+        </div>
+
+        <div class="preview-list" *ngIf="impactPreview.length > 0">
+          <div class="preview-chip" *ngFor="let item of impactPreview.slice(0, 6)">
+            <strong>{{ item.studentCode }}</strong> ({{ item.companyCode }}) — Room {{ item.roomCode }}, {{ item.startTime.substring(0,5) }}
+          </div>
+          <span class="more-chip" *ngIf="impactPreview.length > 6">+{{ impactPreview.length - 6 }} more</span>
+        </div>
+
+        <p class="preview-empty" *ngIf="!loadingImpact && impactPreview.length === 0">
+          No scheduled interviews found matching these parameters.
+        </p>
+      </div>
+
+      <!-- Replan Execute Action Button -->
+      <div class="form-actions">
+        <button class="btn btn-warning btn-lg" (click)="executeConflict()" [disabled]="replanning">
+          <span *ngIf="replanning" class="btn-spinner"></span>
+          <span>⚡ EXECUTE REPLAN</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Error Banner -->
+  <div class="error-banner" *ngIf="errorMessage">
+    <span>⚠ {{ errorMessage }}</span>
+  </div>
+
+  <!-- REPLAN COMPLETED BANNER & CHANGE DIFF -->
+  <div class="replan-result-card" *ngIf="lastReplanResult">
+    <div class="result-card-header">
+      <div class="header-left">
+        <div class="check-circle">✓</div>
+        <div>
+          <h2>REPLAN COMPLETED</h2>
+          <span class="disruption-title">{{ lastDisruptionName }}</span>
+        </div>
+      </div>
+      <div class="badge badge-success">Dynamic Replan Applied</div>
+    </div>
+
+    <!-- Metrics Summary Grid -->
+    <div class="replan-metrics-grid">
+      <div class="replan-metric">
+        <span class="label">AFFECTED APPOINTMENTS</span>
+        <strong class="val">{{ lastReplanResult.affectedAppointments }}</strong>
+      </div>
+
+      <div class="replan-metric">
+        <span class="label">APPOINTMENTS MOVED</span>
+        <strong class="val text-primary">{{ lastReplanResult.movedAppointments || 0 }}</strong>
+      </div>
+
+      <div class="replan-metric">
+        <span class="label">CANCELLED / UNSCHEDULED</span>
+        <strong class="val text-warning">{{ (lastReplanResult.unscheduledAppointments || 0) + (lastReplanResult.cancelledAppointments || 0) }}</strong>
+      </div>
+
+      <div class="replan-metric">
+        <span class="label">UNCHANGED</span>
+        <strong class="val">{{ lastReplanResult.unchangedAppointments }}</strong>
+      </div>
+    </div>
+
+    <!-- CHANGE DIFF TABLE -->
+    <div class="diff-section">
+      <h3>Change Diff</h3>
+
+      <div class="table-responsive">
+        <table class="diff-table">
+          <thead>
+            <tr>
+              <th>Student</th>
+              <th>Company</th>
+              <th>Before (Original)</th>
+              <th>After (Replanned)</th>
+              <th>Change Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let change of lastReplanResult.changes">
+              <td>
+                <strong>{{ change.studentCode || ('STU#' + change.studentId) }}</strong>
+              </td>
+              <td>{{ change.companyCode || ('CMP#' + change.companyId) }}</td>
+              <td>
+                <span class="slot-badge before">
+                  {{ change.oldDate || '—' }} {{ change.oldStartTime ? change.oldStartTime.substring(0,5) : '—' }}
+                </span>
+              </td>
+              <td>
+                <span class="slot-badge after" *ngIf="change.newStartTime">
+                  {{ change.newDate || '—' }} {{ change.newStartTime ? change.newStartTime.substring(0,5) : '—' }}
+                </span>
+                <span class="text-muted" *ngIf="!change.newStartTime">—</span>
+              </td>
+              <td>
+                <span
+                  class="change-pill"
+                  [ngClass]="{
+                    'pill-moved': getChangeTypeBadge(change) === 'MOVED',
+                    'pill-cancelled': getChangeTypeBadge(change) === 'CANCELLED',
+                    'pill-same': getChangeTypeBadge(change) === 'UNCHANGED'
+                  }"
+                >
+                  {{ getChangeTypeBadge(change) }}
+                </span>
+              </td>
+            </tr>
+
+            <tr *ngIf="lastReplanResult.changes.length === 0">
+              <td colspan="5" class="text-center">No appointment changes required.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</div>

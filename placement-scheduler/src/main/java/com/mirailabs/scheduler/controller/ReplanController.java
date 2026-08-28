@@ -2,7 +2,6 @@ package com.mirailabs.scheduler.controller;
 
 import com.mirailabs.scheduler.replan.*;
 import com.mirailabs.scheduler.entity.ReplanDisruptionType;
-import com.mirailabs.scheduler.schedule.SchedulingCandidate;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
