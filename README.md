@@ -124,7 +124,94 @@ To keep credentials secure and prevent plain-text passwords from being exposed t
 
 ---
 
-## 🏁 Quick Start & Installation
+## 🐳 Docker Deployment (Recommended)
+
+The easiest and fastest way to deploy the complete application stack (MySQL, Spring Boot Backend, and Angular Frontend) is using **Docker & Docker Compose**.
+
+### Prerequisites
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) (includes Docker Compose)
+
+### 1-Command Startup
+From the project root directory, run:
+
+```bash
+docker compose up -d --build
+```
+
+This single command will:
+1. Spin up a **MySQL 8.0** database container with automatic health checking and volume persistence (`placement-scheduler-db`).
+2. Build the **Spring Boot** backend container using multi-stage JDK 21 build (`placement-scheduler-backend`).
+3. Build the **Angular** frontend container using multi-stage Node 20 build and serve it via **Nginx** (`placement-scheduler-frontend`).
+
+### Accessing the Services
+- **Angular Frontend**: `http://localhost` (or `http://localhost:4200`)
+- **Backend REST API**: `http://localhost:8080/api`
+- **MySQL Database**: `localhost:3306`
+
+### Useful Docker Commands
+```bash
+# View running services and container status
+docker compose ps
+
+# View live application logs
+docker compose logs -f
+
+# Stop and remove containers
+docker compose down
+
+# Stop containers and remove database volume
+docker compose down -v
+```
+
+---
+
+## ☁️ Render Cloud Deployment Guide
+
+Follow this sequence to deploy the application onto **Render.com**:
+
+### 1. Hosted MySQL Database Setup
+Provision a managed MySQL database instance (e.g. Aiven, PlanetScale, Railway, or AWS RDS) and obtain your connection parameters:
+- `DB_URL`: `jdbc:mysql://<HOST>:<PORT>/<DATABASE_NAME>?useSSL=false`
+- `DB_USERNAME`: Database user
+- `DB_PASSWORD`: Database password
+
+### 2. Backend Service Deployment (Render)
+1. In Render Dashboard, click **New +** -> **Web Service**.
+2. Connect your GitHub repository and set the **Root Directory** to `placement-scheduler`.
+3. Choose **Docker** as the Runtime environment.
+4. Add the following **Environment Variables**:
+   - `DB_URL`: `jdbc:mysql://<HOST>:<PORT>/placement_scheduler?...`
+   - `DB_USERNAME`: `<YOUR_DB_USER>`
+   - `DB_PASSWORD`: `<YOUR_DB_PASSWORD>`
+   - `DDL_AUTO`: `update`
+   - `CORS_ALLOWED_ORIGINS`: `https://YOUR-FRONTEND-NAME.onrender.com`
+5. Click **Create Web Service**. Once deployed, copy your backend URL (e.g. `https://placement-scheduler-backend.onrender.com`).
+
+### 3. Update Angular Production Endpoint
+In `placement-scheduler-ui/src/environments/environment.prod.ts`, set `apiUrl` to your deployed backend URL:
+```typescript
+export const environment = {
+  production: true,
+  apiUrl: 'https://placement-scheduler-backend.onrender.com/api'
+};
+```
+Commit and push the change to GitHub:
+```bash
+git add placement-scheduler-ui/src/environments/environment.prod.ts
+git commit -m "Configure production Render backend URL"
+git push origin main
+```
+
+### 4. Frontend Service Deployment (Render)
+1. In Render Dashboard, click **New +** -> **Web Service**.
+2. Connect your GitHub repository and set the **Root Directory** to `placement-scheduler-ui`.
+3. Choose **Docker** as the Runtime environment.
+4. Render will automatically detect `EXPOSE 80` in the Dockerfile and launch Nginx.
+5. Click **Create Web Service**.
+
+---
+
+## 🏁 Local Development Setup (Manual)
 
 ### 1. Database Setup
 

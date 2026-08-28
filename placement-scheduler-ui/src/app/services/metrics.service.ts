@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 
 import { HttpClient } from '@angular/common/http';
+import { environment } from '../../environments/environment';
 
 import {
   Observable,
@@ -39,8 +40,7 @@ export class MetricsService {
 
   private http = inject(HttpClient);
 
-  private readonly apiUrl =
-    'http://localhost:8080/api/metrics';
+  private readonly apiUrl = `${environment.apiUrl}/metrics`;
 
   getSummary(): Observable<MetricsSummary> {
 
