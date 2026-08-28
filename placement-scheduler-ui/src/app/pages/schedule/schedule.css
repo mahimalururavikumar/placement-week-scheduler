@@ -431,3 +431,172 @@ button:disabled {
     transform: rotate(360deg);
   }
 }
+
+/* ==================================================
+   FILTER PANEL
+   ================================================== */
+
+.filter-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+
+.filter-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+
+.filter-heading h2 {
+  margin: 4px 0 0;
+  font-size: 18px;
+}
+
+
+.filter-count {
+  padding: 7px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+
+/* ==================================================
+   FILTER FIELDS
+   ================================================== */
+
+.filter-fields {
+  display: grid;
+  grid-template-columns:
+    repeat(5, minmax(130px, 1fr));
+
+  gap: 16px;
+}
+
+
+.filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+
+.filter-group label {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+
+.filter-group input {
+  width: 100%;
+  min-height: 42px;
+
+  padding: 0 12px;
+
+  border: 1px solid #d9dde5;
+  border-radius: 8px;
+
+  background: #fff;
+
+  font: inherit;
+
+  box-sizing: border-box;
+}
+
+
+.filter-group input:focus {
+  outline: none;
+  border-color: #1f2937;
+
+  box-shadow:
+    0 0 0 3px
+    rgba(31, 41, 55, 0.08);
+}
+
+
+.filter-group input::placeholder {
+  opacity: 0.55;
+}
+
+
+/* ==================================================
+   FILTER ACTIONS
+   ================================================== */
+
+.filter-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+
+.apply-filter-button,
+.clear-button {
+  min-height: 40px;
+
+  padding: 0 16px;
+
+  border-radius: 8px;
+
+  font: inherit;
+  font-weight: 600;
+
+  cursor: pointer;
+}
+
+
+.apply-filter-button {
+  border: 0;
+}
+
+
+.apply-filter-button:disabled,
+.clear-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+
+/* ==================================================
+   RESPONSIVE FILTERS
+   ================================================== */
+
+@media (max-width: 1100px) {
+
+  .filter-fields {
+    grid-template-columns:
+      repeat(3, minmax(150px, 1fr));
+  }
+
+}
+
+
+@media (max-width: 700px) {
+
+  .filter-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+
+  .filter-fields {
+    grid-template-columns: 1fr;
+  }
+
+
+  .filter-actions {
+    width: 100%;
+    flex-direction: column;
+  }
+
+
+  .apply-filter-button,
+  .clear-button {
+    width: 100%;
+  }
+
+}

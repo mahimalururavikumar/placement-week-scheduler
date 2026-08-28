@@ -18,31 +18,38 @@
 
     <div class="header-actions">
 
-      <button
-        class="secondary-button"
-        type="button"
-        (click)="refresh()"
-        [disabled]="loading || generating"
-      >
-        ↻ Refresh
-      </button>
+  <button
+    class="secondary-button"
+    type="button"
+    (click)="refresh()"
+    [disabled]="loading || generating"
+  >
+    <span *ngIf="!loading">
+      ↻ Refresh
+    </span>
 
-      <button
-        class="primary-button"
-        type="button"
-        (click)="generateSchedule()"
-        [disabled]="generating"
-      >
-        <span *ngIf="!generating">
-          Generate Schedule
-        </span>
+    <span *ngIf="loading">
+      Refreshing...
+    </span>
+  </button>
 
-        <span *ngIf="generating">
-          Generating...
-        </span>
-      </button>
 
-    </div>
+  <button
+    class="primary-button"
+    type="button"
+    (click)="generateSchedule()"
+    [disabled]="loading || generating"
+  >
+    <span *ngIf="!generating">
+      Generate Schedule
+    </span>
+
+    <span *ngIf="generating">
+      Generating...
+    </span>
+  </button>
+
+</div>
 
   </div>
 
@@ -59,7 +66,36 @@
 
   <!-- Filters -->
 
-  <section class="filter-panel">
+  <!-- Filters -->
+
+<section class="filter-panel">
+
+  <div class="filter-heading">
+
+    <div>
+      <span class="eyebrow">
+        SCHEDULE FILTERS
+      </span>
+
+      <h2>Find Interviews</h2>
+    </div>
+
+    <span
+      class="filter-count"
+      *ngIf="activeFilterCount > 0"
+    >
+      {{ activeFilterCount }}
+      active
+      {{ activeFilterCount === 1 ? 'filter' : 'filters' }}
+    </span>
+
+  </div>
+
+
+  <div class="filter-fields">
+
+
+    <!-- DATE -->
 
     <div class="filter-group">
 
@@ -71,11 +107,12 @@
         id="schedule-date"
         type="date"
         [(ngModel)]="selectedDate"
-        (change)="loadSchedule()"
       />
 
     </div>
 
+
+    <!-- COMPANY -->
 
     <div class="filter-group">
 
@@ -87,13 +124,16 @@
         id="company-id"
         type="number"
         min="1"
+        step="1"
+        inputmode="numeric"
         placeholder="All companies"
         [(ngModel)]="selectedCompanyId"
-        (change)="loadSchedule()"
       />
 
     </div>
 
+
+    <!-- STUDENT -->
 
     <div class="filter-group">
 
@@ -105,13 +145,16 @@
         id="student-id"
         type="number"
         min="1"
+        step="1"
+        inputmode="numeric"
         placeholder="All students"
         [(ngModel)]="selectedStudentId"
-        (change)="loadSchedule()"
       />
 
     </div>
 
+
+    <!-- ROOM -->
 
     <div class="filter-group">
 
@@ -123,13 +166,16 @@
         id="room-id"
         type="number"
         min="1"
+        step="1"
+        inputmode="numeric"
         placeholder="All rooms"
         [(ngModel)]="selectedRoomId"
-        (change)="loadSchedule()"
       />
 
     </div>
 
+
+    <!-- PANEL -->
 
     <div class="filter-group">
 
@@ -141,23 +187,56 @@
         id="panel-id"
         type="number"
         min="1"
+        step="1"
+        inputmode="numeric"
         placeholder="All panels"
         [(ngModel)]="selectedPanelId"
-        (change)="loadSchedule()"
       />
 
     </div>
+
+
+  </div>
+
+
+  <!-- FILTER ACTIONS -->
+
+  <div class="filter-actions">
+
+    <button
+      class="apply-filter-button"
+      type="button"
+      (click)="applyFilters()"
+      [disabled]="loading || generating"
+    >
+
+      <span *ngIf="!loading">
+        Apply Filters
+      </span>
+
+      <span *ngIf="loading">
+        Applying...
+      </span>
+
+    </button>
 
 
     <button
       class="clear-button"
       type="button"
       (click)="clearFilters()"
+      [disabled]="
+        loading ||
+        generating ||
+        activeFilterCount === 0
+      "
     >
       Clear Filters
     </button>
 
-  </section>
+  </div>
+
+</section>
 
 
   <!-- Summary -->

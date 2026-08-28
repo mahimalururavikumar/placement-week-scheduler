@@ -4,168 +4,479 @@ import {
   inject
 } from '@angular/core';
 
-import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
+import {
+  CommonModule
+} from '@angular/common';
 
 import {
-  ScheduleService
+  FormsModule
+} from '@angular/forms';
+
+import {
+  finalize,
+  timeout
+} from 'rxjs';
+
+import {
+  ScheduleService,
+  ScheduleGenerationResult
 } from '../../services/schedule';
 
 import {
   ScheduleItem
 } from '../../models/schedule.model';
 
+
 @Component({
   selector: 'app-schedule',
+
   imports: [
     CommonModule,
     FormsModule
   ],
+
   templateUrl: './schedule.html',
+
   styleUrl: './schedule.css'
 })
-export class ScheduleComponent implements OnInit {
+export class ScheduleComponent
+    implements OnInit {
+
 
   private readonly scheduleService =
-    inject(ScheduleService);
+      inject(ScheduleService);
+
 
   schedules: ScheduleItem[] = [];
 
+
+  /*
+   * --------------------------------------------------
+   * UI STATE
+   * --------------------------------------------------
+   */
+
   loading = false;
+
   generating = false;
+
   error = false;
 
+
+  /*
+   * --------------------------------------------------
+   * FILTER STATE
+   * --------------------------------------------------
+   */
+
   selectedDate = '';
-  selectedCompanyId: number | null = null;
-  selectedStudentId: number | null = null;
-  selectedRoomId: number | null = null;
-  selectedPanelId: number | null = null;
+
+  selectedCompanyId:
+      number | null = null;
+
+  selectedStudentId:
+      number | null = null;
+
+  selectedRoomId:
+      number | null = null;
+
+  selectedPanelId:
+      number | null = null;
+
+
+  /*
+   * --------------------------------------------------
+   * MESSAGES
+   * --------------------------------------------------
+   */
 
   generationMessage = '';
 
+
+  /*
+   * --------------------------------------------------
+   * INITIAL LOAD
+   * --------------------------------------------------
+   */
+
   ngOnInit(): void {
-    this.loadSchedule();
+
+    /*
+     * Load the existing schedule silently.
+     *
+     * The user should immediately see the schedule
+     * if it already exists.
+     */
+    this.loadSchedule(false);
   }
 
-  loadSchedule(): void {
 
-    this.loading = true;
-    this.error = false;
+  /*
+   * --------------------------------------------------
+   * LOAD SCHEDULE
+   * --------------------------------------------------
+   */
 
-    this.scheduleService
-      .getSchedule({
-        date: this.selectedDate || undefined,
-        companyId:
-          this.selectedCompanyId ?? undefined,
-        studentId:
-          this.selectedStudentId ?? undefined,
-        roomId:
-          this.selectedRoomId ?? undefined,
-        panelId:
-          this.selectedPanelId ?? undefined
-      })
-      .subscribe({
+  loadSchedule(
+      showLoading = true
+  ): void {
 
-        next: (data) => {
-          this.schedules = data;
-          this.loading = false;
-        },
-
-        error: (err) => {
-          console.error(
-            'Schedule loading failed:',
-            err
-          );
-
-          this.schedules = [];
-          this.loading = false;
-          this.error = true;
-        }
-      });
-  }
-
-  generateSchedule(): void {
-
+    /*
+     * Never start a GET while schedule generation
+     * is running.
+     */
     if (this.generating) {
       return;
     }
 
-    this.generating = true;
-    this.generationMessage = '';
+
+    if (showLoading) {
+
+      this.loading = true;
+    }
+
+
     this.error = false;
 
+
     this.scheduleService
-      .generateSchedule()
-      .subscribe({
+        .getSchedule({
 
-        next: (response: any) => {
+          date:
+              this.selectedDate || undefined,
 
-          console.log(
-            'Schedule generated:',
-            response
-          );
+          companyId:
+              this.selectedCompanyId ?? undefined,
 
-          this.generationMessage =
-            response?.message ??
-            'Schedule generated successfully.';
+          studentId:
+              this.selectedStudentId ?? undefined,
 
-          this.generating = false;
+          roomId:
+              this.selectedRoomId ?? undefined,
 
-          this.loadSchedule();
-        },
+          panelId:
+              this.selectedPanelId ?? undefined
 
-        error: (err) => {
+        })
+        .pipe(
 
-          console.error(
-            'Schedule generation failed:',
-            err
-          );
+          /*
+           * Prevent a stuck loading state.
+           */
+          timeout(10000),
 
-          this.generating = false;
-          this.error = true;
+          finalize(() => {
 
-          this.generationMessage =
-            'Unable to generate schedule.';
-        }
-      });
+            if (showLoading) {
+
+              this.loading = false;
+            }
+
+          })
+
+        )
+        .subscribe({
+
+          next: (
+              data: ScheduleItem[]
+          ) => {
+
+            console.log(
+                'SCHEDULE: loaded',
+                data.length,
+                'interviews'
+            );
+
+
+            this.schedules = data;
+
+            this.error = false;
+          },
+
+
+          error: (err) => {
+
+            console.error(
+                'SCHEDULE: load failed',
+                err
+            );
+
+
+            /*
+             * Keep existing rows visible if a refresh
+             * fails.
+             */
+            this.error = true;
+          }
+
+        });
   }
 
-  refresh(): void {
-    this.loadSchedule();
+
+  /*
+   * --------------------------------------------------
+   * APPLY FILTERS
+   * --------------------------------------------------
+   */
+
+  applyFilters(): void {
+
+    if (
+        this.loading ||
+        this.generating
+    ) {
+
+      return;
+    }
+
+
+    this.generationMessage = '';
+
+    this.loadSchedule(true);
   }
+
+
+  /*
+   * --------------------------------------------------
+   * CLEAR FILTERS
+   * --------------------------------------------------
+   */
 
   clearFilters(): void {
 
+    if (
+        this.loading ||
+        this.generating
+    ) {
+
+      return;
+    }
+
+
     this.selectedDate = '';
+
     this.selectedCompanyId = null;
+
     this.selectedStudentId = null;
+
     this.selectedRoomId = null;
+
     this.selectedPanelId = null;
 
-    this.loadSchedule();
+
+    this.generationMessage = '';
+
+    this.error = false;
+
+
+    /*
+     * Load the complete schedule again.
+     */
+    this.loadSchedule(true);
   }
+
+
+  /*
+   * --------------------------------------------------
+   * REFRESH
+   * --------------------------------------------------
+   */
+
+  refresh(): void {
+
+    if (
+        this.loading ||
+        this.generating
+    ) {
+
+      return;
+    }
+
+
+    this.generationMessage = '';
+
+    this.loadSchedule(true);
+  }
+
+
+  /*
+   * --------------------------------------------------
+   * GENERATE SCHEDULE
+   * --------------------------------------------------
+   */
+
+  generateSchedule(): void {
+
+    if (
+        this.generating ||
+        this.loading
+    ) {
+
+      return;
+    }
+
+
+    console.log(
+        'SCHEDULE: generation started'
+    );
+
+
+    this.generating = true;
+
+    this.error = false;
+
+    this.generationMessage = '';
+
+
+    this.scheduleService
+        .generateSchedule()
+        .pipe(
+
+          /*
+           * Schedule generation may take some time.
+           */
+          timeout(120000),
+
+          /*
+           * Always return the button to its normal
+           * state.
+           */
+          finalize(() => {
+
+            this.generating = false;
+
+            console.log(
+                'SCHEDULE: generation finished'
+            );
+          })
+
+        )
+        .subscribe({
+
+          next: (
+              response: ScheduleGenerationResult
+          ) => {
+
+            console.log(
+                'SCHEDULE: generation response',
+                response
+            );
+
+
+            this.generationMessage =
+                response.message ||
+                'Schedule generated successfully.';
+
+
+            /*
+             * Reload using the currently selected
+             * filters.
+             */
+            this.loadSchedule(false);
+          },
+
+
+          error: (err) => {
+
+            console.error(
+                'SCHEDULE: generation failed',
+                err
+            );
+
+
+            this.error = true;
+
+
+            if (
+                err?.name === 'TimeoutError'
+            ) {
+
+              this.generationMessage =
+                  'Schedule generation timed out.';
+            } else {
+
+              this.generationMessage =
+                  'Unable to generate schedule.';
+            }
+
+          }
+
+        });
+  }
+
+
+  /*
+   * --------------------------------------------------
+   * FILTER COUNT
+   * --------------------------------------------------
+   */
+
+  get activeFilterCount(): number {
+
+    let count = 0;
+
+
+    if (this.selectedDate) {
+      count++;
+    }
+
+    if (this.selectedCompanyId != null) {
+      count++;
+    }
+
+    if (this.selectedStudentId != null) {
+      count++;
+    }
+
+    if (this.selectedRoomId != null) {
+      count++;
+    }
+
+    if (this.selectedPanelId != null) {
+      count++;
+    }
+
+
+    return count;
+  }
+
+
+  /*
+   * --------------------------------------------------
+   * RESULT COUNTS
+   * --------------------------------------------------
+   */
 
   get scheduledCount(): number {
 
     return this.schedules.filter(
-      item =>
-        item.status === 'SCHEDULED'
+        item =>
+            item.status === 'SCHEDULED'
     ).length;
   }
+
 
   get unscheduledCount(): number {
 
     return this.schedules.filter(
-      item =>
-        item.status === 'UNSCHEDULED'
+        item =>
+            item.status === 'UNSCHEDULED'
     ).length;
   }
 
+
+  /*
+   * --------------------------------------------------
+   * TRACKING
+   * --------------------------------------------------
+   */
+
   trackByInterviewId(
-    index: number,
-    item: ScheduleItem
+      index: number,
+      item: ScheduleItem
   ): number {
 
     return item.interviewId;
   }
+
 }

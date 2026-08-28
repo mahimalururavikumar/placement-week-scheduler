@@ -69,7 +69,9 @@ public class ScheduleService {
                                 )
                                 .thenComparing(
                                         interview ->
-                                                interview.getRoom()
+                                                interview.getRoom() == null
+                                                        ? ""
+                                                        : interview.getRoom()
                                                         .getRoomCode()
                                 )
                 )
